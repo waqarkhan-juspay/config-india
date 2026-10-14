@@ -22,6 +22,7 @@ const hm = s => { const p = s.split(':'); return (+p[0]) * 60 + (+p[1]); };
 const toMs = min => DAY0 + min * 60000;
 const DOORS = hm(D.info[0].time);                    // 07:00
 const DAY_END = hm('20:00');
+let spFilter = 'all';                              // Speakers: which colour pill is on
 let planEditOpen = false;                          // My plan: "Manage plan" panel open?
 let simBase = null;                                // a previewed moment (frozen), or null for real time
 function readSim(){
@@ -49,6 +50,7 @@ const TALKS = ITEMS.filter(x => x.kind === 'talk');
 const KEYNOTES = ITEMS.filter(x => x.theme === 'keynote');
 const LC_N = ITEMS.filter(x => x.loc === 'lcl').length;
 const THEME_ORDER = ['keynote', 'stage', 'lounge', 'food', 'connect'];
+const SP_FILTERS = [['all', 'All'], ['stage', 'Main Stage'], ['keynote', 'Keynote'], ['lounge', 'LC Lounge']];
 
 function inits(n){ const p = String(n).split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
 function av(k, size, cls){ const s = SP[k]; const th = BY[s.items[0]].theme; return '<span class="av t-' + th + (PH[k] ? ' ph' : '') + (cls ? ' ' + cls : '') + '"' + (PH[k] ? ' data-k="' + k + '"' : '') + ' style="--s:' + size + 'px" aria-hidden="true">' + esc(inits(s.name)) + '</span>'; }
@@ -421,8 +423,10 @@ function renderSpeakers(){
   if (!v.firstChild){
     v.innerHTML = '<div class="lt" id="lt-speakers"><p class="eyebrow" id="spEyebrow"></p><h1 class="lt-title">Speakers</h1></div>' +
       '<div class="field">' + svg('search') + '<input id="spq" type="search" placeholder="Name, company or talk" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search speakers"></div>' +
+      '<div class="sp-chips" id="spChips" role="group" aria-label="Filter speakers"></div>' +
       '<ul class="list sp-list" id="spList" aria-label="Speakers"></ul><div class="sp-lc" id="spLC"></div>';
     $('#spq').addEventListener('input', () => renderSpeakerList());
+    $('#spChips').addEventListener('click', e => { const b = e.target.closest('[data-spf]'); if (!b || b.dataset.spf === spFilter) return; spFilter = b.dataset.spf; haptic(6); renderSpeakerList(); });
   }
   renderSpeakerList();
 }
@@ -433,8 +437,13 @@ function renderSpeakerList(){
   const shown = SP_KEYS.filter(spOK), hiddenN = SP_KEYS.length - shown.length;
   $('#spEyebrow').textContent = shown.length + ' speakers · ' + TALKS.filter(lcOK).length + ' talks';
   $('#spLC').innerHTML = (hiddenN || S.showLC) ? lcToggleHTML(S.showLC ? 'All speakers shown' : hiddenN + ' speakers hidden') : '';
-  const keys = shown.filter(k => !q || q.split(/\s+/).every(w => speakerHay(k).indexOf(w) >= 0));
-  $('#spList').innerHTML = keys.length ? keys.map(speakerRow).join('') : '<li class="none">No speaker matches “' + esc(q) + '”.</li>';
+  // colour pills: where each speaker is on (a speaker on two stages shows under both)
+  const has = (k, th) => SP[k].items.some(id => BY[id].theme === th && lcOK(BY[id]));
+  const pills = SP_FILTERS.filter(f => f[0] !== 'lounge' || S.showLC).map(f => ({f, n: f[0] === 'all' ? shown.length : shown.filter(k => has(k, f[0])).length})).filter(p => p.n);
+  if (!pills.some(p => p.f[0] === spFilter)) spFilter = 'all';
+  $('#spChips').innerHTML = pills.map(({f, n}) => '<button class="chip" type="button" data-spf="' + f[0] + '" aria-pressed="' + (spFilter === f[0]) + '">' + (f[0] === 'all' ? '' : '<span class="cdots" aria-hidden="true"><i class="t-' + f[0] + '"></i></span>') + f[1] + '<span class="n">' + n + '</span></button>').join('');
+  const keys = shown.filter(k => (spFilter === 'all' || has(k, spFilter)) && (!q || q.split(/\s+/).every(w => speakerHay(k).indexOf(w) >= 0)));
+  $('#spList').innerHTML = keys.length ? keys.map(speakerRow).join('') : '<li class="none">' + (q ? 'No speaker matches “' + esc(q) + '”.' : 'No speakers here.') + '</li>';
 }
 function speakerRow(k){
   const s = SP[k], it = BY[s.items[0]];
@@ -573,21 +582,12 @@ function speakerSheet(k){
     (s.bio && s.bio.length ? '<section class="sec"><h3 class="h-sec">In short</h3><div class="body-copy">' + s.bio.map(p => '<p>' + esc(p) + '</p>').join('') + '</div></section>' : '');
 }
 function friendsSheet(){
-  const steps = CAN_LINK
-    ? ['Your friend opens Config Pokedex, adds their sessions, then taps <b>Share plan</b> in My plan.',
-       'They send you the link. Tap it and choose <b>Compare with my plan</b>. Their sessions show up next to yours.',
-       'Got a message with a <b>CI2-</b> code instead? Paste it below with their name.']
-    : ['Your friend opens Config Pokedex, adds their sessions, then taps <b>Share plan</b> in My plan.',
-       'They send you the message. Paste it below with their name and tap <b>Add their plan</b>.'];
+  const steps = ['Your friend opens Config Pokedex, adds their sessions, then taps <b>Share plan</b> in My plan.',
+                 'They send you the link on WhatsApp. Tap it and choose <b>Compare with my plan</b>. Their sessions show up next to yours.'];
   return '<h2 class="sh-title" id="sheetTitle" style="font-size:27px">Plans with friends</h2>' +
     '<ol class="steps">' + steps.map(t => '<li><span>' + t + '</span></li>').join('') + '</ol>' +
-    '<p class="hint" style="margin-top:12px">To send yours, tap <b>Share plan</b> in My plan.</p>' +
-    '<section class="sec"><h3 class="h-sec">Add a friend’s plan</h3><div class="form">' +
-      '<div><label for="fname">Their name</label><input id="fname" type="text" maxlength="24" autocomplete="off" placeholder="e.g. Priya"></div>' +
-      '<div><label for="fcode">Their message or plan code</label><textarea id="fcode" rows="3" placeholder="Paste the message they sent you, or just the CI2-… code"></textarea></div>' +
-      '<p class="err" id="ferr" role="alert"></p>' +
-      '<button class="btn primary" type="button" data-act="friend-add">' + svg('plus') + 'Add their plan</button></div></section>' +
-    (S.friends.length ? '<section class="sec"><h3 class="h-sec">Added</h3><ul class="flist">' + S.friends.map((f, i) => { const shared = f.ids.filter(id => S.picks.has(id)).length; return '<li><span class="pal" style="--pc:' + friendColor(i) + '">' + esc(initial(f.name)) + '</span><div style="min-width:0"><b>' + esc(f.name) + '</b><span>' + f.ids.length + ' picked · ' + shared + ' with you</span></div><div class="fl-act">' + (f.ids.some(id => !S.picks.has(id)) ? '<button class="go" type="button" data-act="friend-merge" data-i="' + i + '" aria-label="Add ' + esc(f.name) + '’s sessions to your plan">Add to mine</button>' : '') + '<button type="button" data-act="friend-remove" data-i="' + i + '" aria-label="Remove ' + esc(f.name) + '’s plan">Remove</button></div></li>'; }).join('') + '</ul></section>' : '');
+    '<p class="hint fs-send">To send yours, tap <button class="link-btn" type="button" data-act="share">Share plan</button>.</p>' +
+    (S.friends.length ? '<section class="sec"><h3 class="h-sec">Comparing with</h3><ul class="flist">' + S.friends.map((f, i) => { const shared = f.ids.filter(id => S.picks.has(id)).length; return '<li><span class="pal" style="--pc:' + friendColor(i) + '">' + esc(initial(f.name)) + '</span><div style="min-width:0"><b>' + esc(f.name) + '</b><span>' + f.ids.length + ' picked · ' + shared + ' with you</span></div><div class="fl-act">' + (f.ids.some(id => !S.picks.has(id)) ? '<button class="go" type="button" data-act="friend-merge" data-i="' + i + '" aria-label="Add ' + esc(f.name) + '’s sessions to your plan">Add to mine</button>' : '') + '<button type="button" data-act="friend-remove" data-i="' + i + '" aria-label="Remove ' + esc(f.name) + '’s plan">Remove</button></div></li>'; }).join('') + '</ul></section>' : '');
 }
 function searchSheet(){
   return '<h2 class="sr" id="sheetTitle">Search</h2><div class="field">' + svg('search') + '<input id="sq" type="search" placeholder="Sessions, speakers, companies" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search sessions and speakers"></div><div id="sres"></div>';
@@ -658,29 +658,29 @@ function updateBadge(bump){
   renderLanes(); updateScrubber();
   if (bump && n){ b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
 }
-// A link carries the plan in its #hash (never sent to a server). Inside an embed (the Claude page) there's no
-// shareable address, so the message carries the plan code instead.
-const CAN_LINK = (() => { try { return window.top === window.self && /^https?:$/.test(location.protocol); } catch (e) { return false; } })();
-function shareLink(){ return location.origin + location.pathname + '#p=' + encodePlan(Array.from(S.picks)) + (S.me ? '&n=' + encodeURIComponent(S.me) : ''); }
+// A link carries the plan in its #hash (never sent to a server). Opened inside an embed (the Claude page),
+// the page has no address of its own, so links point at the live site.
+const SITE = 'https://config-india.vercel.app/';
+const OWN_URL = (() => { try { return window.top === window.self && /^https?:$/.test(location.protocol); } catch (e) { return false; } })();
+function shareLink(){ return (OWN_URL ? location.origin + location.pathname : SITE) + '#p=' + encodePlan(Array.from(S.picks)) + (S.me ? '&n=' + encodeURIComponent(S.me) : ''); }
 function planText(){
   const mine = picked(); if (!mine.length) return null;
   const lines = [(S.me ? S.me + '’s' : 'My') + ' Config India plan · Thu, Oct 15', ''];
   mine.forEach(it => lines.push(fT(it.sm) + ' · ' + (it.kind === 'event' ? ctxTitle(it) : fullTitle(it))));
   lines.push('');
-  if (CAN_LINK) lines.push('Compare with yours: ' + shareLink());
-  else lines.push('Plan code: ' + encodePlan(Array.from(S.picks)), 'Paste it in Config Pokedex, under Friends, to see where we overlap.');
+  lines.push('Compare with yours: ' + shareLink());
   return lines.join('\n');
 }
 const waURL = () => 'https://wa.me/?text=' + encodeURIComponent(planText() || '');
 function shareSheet(){
   const txt = planText() || '';
   return '<h2 class="sh-title" id="sheetTitle" style="font-size:27px">Share your plan</h2>' +
-    '<p class="hint" style="margin-top:8px">' + (CAN_LINK ? 'Friends tap the link to see your sessions next to theirs.' : 'Friends paste the code in Config Pokedex to see your sessions next to theirs.') + '</p>' +
+    '<p class="hint" style="margin-top:8px">Friends tap the link to see your sessions next to theirs.</p>' +
     '<div class="form" style="margin-top:14px"><div><label for="myname">Your first name</label><input id="myname" type="text" maxlength="24" autocomplete="given-name" required aria-required="true" aria-describedby="nameErr" placeholder="So friends know whose plan it is" value="' + esc(S.me) + '"><p class="err" id="nameErr" role="alert"></p></div></div>' +
     '<div class="sh-actions">' +
       '<a class="btn primary" id="shareWA" href="' + esc(waURL()) + '" target="_blank" rel="noopener noreferrer">' + svg('chat') + 'Send on WhatsApp</a>' +
       (navigator.share ? '<button class="btn block" type="button" data-act="share-native">' + svg('share') + 'More options</button>' : '') +
-      '<button class="btn block" type="button" data-act="share-copy">' + svg(CAN_LINK ? 'link' : 'copy') + (CAN_LINK ? 'Copy link' : 'Copy message') + '</button>' +
+      '<button class="btn block" type="button" data-act="share-copy">' + svg('link') + 'Copy link</button>' +
     '</div>' +
     '<section class="sec"><h3 class="h-sec">Message</h3><p class="share-preview" id="sharePrev">' + esc(txt) + '</p></section>';
 }
@@ -704,10 +704,10 @@ function wireShare(){
   });
 }
 async function copyShare(){
-  const txt = CAN_LINK ? shareLink() : planText();
+  const txt = shareLink();
   let ok = false;
   try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) { ok = false; }
-  if (ok) toast(CAN_LINK ? 'Link copied. Paste it anywhere.' : 'Plan copied. Paste it anywhere.');
+  if (ok) toast('Link copied. Paste it anywhere.');
   else { openSheet({type: 'copy', text: txt}); setTimeout(() => { const b = $('#copyBox'); if (b){ b.focus(); b.select(); } }, 80); }
 }
 // Someone opened a shared link: show their plan, then let them compare or copy it in.
@@ -731,32 +731,6 @@ function incomingSheet(v){
     '</div>' +
     '<section class="sec"><h3 class="h-sec">Their sessions</h3>' + v.ids.map(id => BY[id]).filter(Boolean).sort((a, b) => a.s - b.s).map(miniRow).join('') + '</section>';
 }
-async function copyPlan(){
-  const txt = planText();
-  if (!txt){ toast('Add a session first, then copy your plan.'); return; }
-  let ok = false;
-  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) { ok = false; }
-  if (ok) toast('Plan copied. Paste it in WhatsApp or anywhere.');
-  else { openSheet({type: 'copy', text: txt}); setTimeout(() => { const b = $('#copyBox'); if (b){ b.focus(); b.select(); } }, 80); }
-}
-function addFriend(){
-  const typed = String(($('#fname') || {}).value || '').trim();
-  const name = typed ? cleanName(typed) : 'Friend ' + (S.friends.length + 1);
-  const raw = ($('#fcode') || {}).value || '';
-  const err = $('#ferr');
-  const ids = decodePlan(raw);
-  if (!raw.trim()){ err.textContent = 'Paste their message or plan code first.'; return; }
-  if (!ids){ err.textContent = 'That code doesn’t check out. Paste the whole message they sent, or a code that starts with CI2-.'; return; }
-  const code = encodePlan(ids);
-  const existing = S.friends.findIndex(f => f.name.toLowerCase() === name.toLowerCase());
-  if (existing >= 0) S.friends[existing] = {name, code, ids};
-  else { if (S.friends.length >= 8){ err.textContent = 'You can compare with up to 8 friends. Remove one first.'; return; } S.friends.push({name, code, ids}); }
-  saveState(true);
-  const shared = ids.filter(id => S.picks.has(id)).length;
-  toast('Added ' + name + '’s plan · ' + ids.length + ' sessions, ' + shared + ' with you');
-  refreshAll();
-}
-
 let clearArmed = 0;
 const actions = {
   'plan-edit'(t){ planEditOpen = !planEditOpen; t.setAttribute('aria-expanded', planEditOpen); const l = $('#planEdit'); if (l) l.hidden = !planEditOpen; if (planEditOpen) requestAnimationFrame(() => l.scrollIntoView({block: 'nearest', behavior: 'smooth'})); },
@@ -780,7 +754,6 @@ const actions = {
     const body = li.querySelector('.done-body'); if (body) body.inert = !open;
     S.done[view] = open; saveState(false);
   },
-  copy(){ copyPlan(); },
   share(){ if (!S.picks.size){ toast('Add a session first, then share your plan.'); return; } openSheet({type: 'share'}); },
   'share-native'(){ if (needName()) return; const txt = planText(); if (txt && navigator.share) navigator.share({text: txt}).catch(() => {}); },
   'share-copy'(){ if (needName()) return; copyShare(); },
@@ -804,7 +777,6 @@ const actions = {
     refreshAll();
   },
   friends(){ openSheet({type: 'friends'}); },
-  'friend-add': addFriend,
   'friend-merge'(t){ const f = S.friends[+t.dataset.i]; if (!f) return; const before = new Set(S.picks); const add = f.ids.filter(id => BY[id] && !S.picks.has(id)); if (!add.length) return; add.forEach(id => S.picks.add(id)); saveState(true); updateBadge(true); haptic(); toast('Added ' + add.length + ' of ' + f.name + '’s sessions to yours', {label: 'Undo', fn: () => { S.picks = before; saveState(true); updateBadge(false); refreshAll(); }}); refreshAll(); },
   'friend-remove'(t){ const i = +t.dataset.i; const f = S.friends[i]; if (!f) return; S.friends.splice(i, 1); saveState(true); toast('Removed ' + f.name + '’s plan', {label: 'Undo', fn: () => { S.friends.splice(i, 0, f); saveState(true); refreshAll(); }}); refreshAll(); },
   keynotes(){ KEYNOTES.forEach(k => S.picks.add(k.id)); saveState(true); updateBadge(true); haptic(); toast('Added the 3 keynotes'); refreshAll(); },
