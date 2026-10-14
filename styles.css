@@ -68,6 +68,15 @@ h1,h2,h3,p{margin:0}
 .bar-title{position:absolute;left:var(--gutter);font-weight:700;font-size:16.5px;letter-spacing:-.018em;opacity:0;transform:translateY(6px);transition:opacity .22s var(--ease-out),transform .22s var(--ease-out);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:calc(100% - 120px)}
 .bar.scrolled .bar-title{opacity:1;transform:none}
 .bar.scrolled .bar-mark{opacity:0;transform:translateY(-6px)}
+/* Sticky "Now": once the status card scrolls away, the live session rides along in the top bar */
+.bar-now{position:absolute;left:calc(var(--gutter) - 4px);max-width:calc(100% - var(--gutter) - 62px);height:34px;display:flex;align-items:center;gap:8px;padding:0 12px 0 11px;border-radius:999px;background:var(--badge);color:var(--badge-ink);font-size:13.5px;font-weight:650;letter-spacing:-.01em;box-shadow:0 6px 18px -10px rgba(0,0,0,.45);opacity:0;transform:translateY(8px) scale(.97);pointer-events:none;transition:opacity .24s var(--ease-out),transform .24s var(--ease-out)}
+.bar-now i{width:7px;height:7px;border-radius:50%;background:var(--live);flex:none;animation:pulse 1.8s infinite}
+.bar-now .bn-k{flex:none;font-family:var(--f-mono);font-size:10.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase}
+.bar-now .bn-t{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-now .bn-m{flex:none;font-family:var(--f-mono);font-size:11px;font-weight:500;color:var(--badge-ink-2)}
+.bar-now:active{transform:scale(.97)}
+.bar.scrolled.has-now .bar-now{opacity:1;transform:none;pointer-events:auto}
+.bar.scrolled.has-now .bar-title{opacity:0;transform:translateY(-6px)}
 .bar-actions{margin-left:auto;display:flex;gap:2px}
 .icon-btn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--ink);transition:transform .16s var(--ease-out),background-color .2s}
 .icon-btn:active{transform:scale(.9);background:var(--fill)}
@@ -370,6 +379,8 @@ h1,h2,h3,p{margin:0}
 .prose a{color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px}
 
 /* ---------- tab bar ---------- */
+/* Fade under the floating nav down to the screen edge, so cards never peek out below it (in-app browsers like X draw their own controls there) */
+.tabbar-fade{position:fixed;z-index:28;left:0;right:0;bottom:0;height:calc(var(--tab-h) + 10px + var(--sab) + 30px);pointer-events:none;background:linear-gradient(to bottom, rgba(241,241,238,0) 0%, rgba(241,241,238,.92) 38%, var(--bg) 60%)}
 .tabbar{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:calc(10px + var(--sab));width:min(496px, calc(100% - 24px));height:var(--tab-h);display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:5px;border-radius:24px;background:var(--glass-2);-webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);border:1px solid rgba(19,19,19,.06);box-shadow:0 10px 30px -8px rgba(19,19,19,.22),0 1px 2px rgba(19,19,19,.06)}
 .tab{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:19px;color:var(--ink-3);font-size:11px;font-weight:650;letter-spacing:.01em;transition:color .2s,background-color .25s var(--ease-out),transform .16s var(--ease-out)}
 .tab:active{transform:scale(.94)}
@@ -410,6 +421,9 @@ html.scrub-closed .scrub-pill{display:inline-flex}
 .tk.main{top:0;height:9px}
 .tk.cafe{top:12px;height:4px;opacity:.9}
 .tk.lcl{top:18px;height:4px;opacity:.9}
+/* Clash: where two of your talks overlap */
+.tk-clash{position:absolute;top:-3px;bottom:-3px;border-radius:3px;background:rgba(229,36,43,.30);box-shadow:inset 0 0 0 1.5px #F0565B;pointer-events:none}
+.scrub-time small.clash{color:#FF8A8D}
 .lanes-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;color:var(--badge-ink-2)}
 .scrub-past{position:absolute;left:11px;top:2px;bottom:2px;width:calc((100% - 22px) * var(--p, 0));background:var(--badge-veil);border-radius:3px 0 0 3px;pointer-events:none}
 .scrub-range{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none}

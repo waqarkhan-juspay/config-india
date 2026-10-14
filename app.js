@@ -843,6 +843,21 @@ function chrome(){
   const stuck = S.tab === 'schedule' && cw && cw.getBoundingClientRect().top <= bar.getBoundingClientRect().bottom + 0.5;
   if (cw) cw.classList.toggle('stuck', !!stuck);
   bar.classList.toggle('flush', !!stuck);
+  nowBar();
+}
+// The session the status card shows, kept in the top bar while you scroll (Schedule and My plan).
+let nowSig = '';
+function nowBar(){
+  const bar = $('#bar'), el = $('#barNow'), t = now();
+  const cur = (S.tab === 'schedule' || S.tab === 'plan') && phase(t) === 'during' ? choose(ITEMS.filter(i => isLive(i, t) && vis(i))) : null;
+  bar.classList.toggle('has-now', !!cur);
+  el.tabIndex = cur && bar.classList.contains('scrolled') ? 0 : -1;
+  const sig = cur ? cur.id + fIn(cur.e - t) : '';
+  if (sig === nowSig) return; nowSig = sig;
+  if (!cur){ el.removeAttribute('data-open'); return; }
+  el.dataset.open = cur.id;
+  el.setAttribute('aria-label', 'Now: ' + ctxTitle(cur) + ', ' + fIn(cur.e - t) + ' left. Open details');
+  el.innerHTML = '<i aria-hidden="true"></i><span class="bn-k">Now</span><span class="bn-t">' + esc(ctxTitle(cur)) + '</span><span class="bn-m">' + fIn(cur.e - t).replace(' min', 'm') + '</span>';
 }
 window.addEventListener('scroll', () => { if (!chromeQueued){ chromeQueued = true; requestAnimationFrame(chrome); } }, {passive: true});
 window.addEventListener('resize', () => requestAnimationFrame(chrome));
@@ -862,6 +877,7 @@ function tick(){
     $$('[data-in]').forEach(p => { const it = BY[p.dataset.in]; if (it) p.textContent = (p.dataset.pre || '') + fIn(it.s - now()); });
     $$('[data-left]').forEach(p => { const it = BY[p.dataset.left]; if (it) p.textContent = fIn(it.e - now()) + ' left'; });
   }
+  nowBar();
 }
 setInterval(tick, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
@@ -882,9 +898,15 @@ function renderLanes(){
     const a = Math.max(it.sm, SMIN), b = Math.min(it.em, SMAX); if (b <= a) return '';
     const l = (a - SMIN) / (SMAX - SMIN) * 100, w = (b - a) / (SMAX - SMIN) * 100;
     return '<i class="tk ' + it.loc + ' t-' + it.theme + '" style="left:' + l.toFixed(2) + '%;width:calc(' + w.toFixed(2) + '% - 1.5px)"></i>';
-  }).join('') : '<span class="lanes-empty">Your picks show up here</span>';
+  }).join('') + clashMarks(mine) : '<span class="lanes-empty">Your picks show up here</span>';
 }
 
+// Red marks wherever two talks in your plan overlap.
+function clashMarks(mine){
+  const talks = mine.filter(it => it.kind === 'talk'), spans = [];
+  talks.forEach((a, x) => talks.forEach((b, y) => { if (y > x && overlaps(a, b)) spans.push([Math.max(a.sm, b.sm), Math.min(a.em, b.em)]); }));
+  return spans.map(([a, b]) => '<i class="tk-clash" style="left:' + ((a - SMIN) / (SMAX - SMIN) * 100).toFixed(2) + '%;width:' + ((b - a) / (SMAX - SMIN) * 100).toFixed(2) + '%"></i>').join('');
+}
 function scrubLayout(){
   const root = document.documentElement;
   root.classList.toggle('scrub-hidden', !(S.tab === 'schedule' || S.tab === 'plan'));
@@ -906,6 +928,8 @@ function momentWord(t){
   if (p === 'after') return 'after hours';
   const mine = picked();
   if (mine.length){
+    const both = mine.filter(i => i.kind === 'talk' && isLive(i, t));
+    if (both.length > 1) return 'clash';
     const cur = mine.find(i => i.kind === 'talk' && isLive(i, t)) || mine.find(i => isLive(i, t));
     if (cur) return 'at ' + shortTitle(cur, 26);
     const nx = mine.find(i => i.s > t);
@@ -923,7 +947,8 @@ function updateScrubber(){
   $('#scrubState').classList.toggle('preview', !live);
   $('#scrubStateText').textContent = live ? 'Live' : 'Preview';
   const label = live ? istLabel(t) : fT(Math.round(nm));
-  $('#scrubTime').innerHTML = esc(label) + '<small>' + (live ? 'IST' : momentWord(t)) + '</small>';
+  const word = live ? 'IST' : momentWord(t);
+  $('#scrubTime').innerHTML = esc(label) + '<small' + (/^clash/.test(word) ? ' class="clash"' : '') + '>' + word + '</small>';
   range.setAttribute('aria-valuetext', (live ? 'Live, ' : 'Previewing ') + label);
   $('#scrubLive').hidden = live;
   $('#scrubPillText').innerHTML = live ? 'Live · ' + esc(istLabel(t)) : '<b>Preview</b> · ' + esc(label);
