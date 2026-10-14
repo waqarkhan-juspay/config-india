@@ -58,9 +58,8 @@ h1,h2,h3,p{margin:0}
 
 /* ---------- shell ---------- */
 .app{max-width:520px;margin:0 auto;min-height:100%;padding-inline:var(--gutter);padding-block:0 calc(var(--tab-h) + 44px + var(--sab) + var(--scrub-h))}
-.bar{position:sticky;top:var(--sat);z-index:20;margin-inline:calc(-1 * var(--gutter));padding-inline:var(--gutter) 10px;height:var(--bar-h);display:flex;align-items:center;gap:8px;transition:background-color .2s, box-shadow .2s}
-.bar::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:var(--sat);background:inherit}
-.bar.scrolled{background:var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 1px 0 var(--line)}
+.bar{position:sticky;top:0;z-index:20;margin-inline:calc(-1 * var(--gutter));padding:var(--sat) 10px 0 var(--gutter);height:calc(var(--bar-h) + var(--sat));display:flex;align-items:center;gap:8px;background:var(--bg);transition:background-color .2s, box-shadow .2s}
+.bar.scrolled{background:rgba(241,241,238,.93);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 1px 0 var(--line)}
 .bar.scrolled.flush{box-shadow:none}
 .bar-mark{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);transition:opacity .2s var(--ease-out),transform .2s var(--ease-out)}
 .bar-mark i{width:16px;height:20px;border-radius:4px;background:var(--ink);position:relative;flex:none}
@@ -380,7 +379,7 @@ h1,h2,h3,p{margin:0}
 
 /* ---------- tab bar ---------- */
 /* Fade under the floating nav down to the screen edge, so cards never peek out below it (in-app browsers like X draw their own controls there) */
-.tabbar-fade{position:fixed;z-index:28;left:0;right:0;bottom:0;height:calc(var(--tab-h) + 10px + var(--sab) + 30px);pointer-events:none;background:linear-gradient(to bottom, rgba(241,241,238,0) 0%, rgba(241,241,238,.92) 38%, var(--bg) 60%)}
+.tabbar-fade{position:fixed;z-index:28;left:0;right:0;bottom:0;height:calc(var(--sab) + 10px + var(--tab-h) + 34px);pointer-events:none;background:linear-gradient(to top, var(--bg) 0, var(--bg) calc(var(--sab) + 10px + var(--tab-h) / 2), rgba(241,241,238,0) 100%)}
 .tabbar{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:calc(10px + var(--sab));width:min(496px, calc(100% - 24px));height:var(--tab-h);display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:5px;border-radius:24px;background:var(--glass-2);-webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);border:1px solid rgba(19,19,19,.06);box-shadow:0 10px 30px -8px rgba(19,19,19,.22),0 1px 2px rgba(19,19,19,.06)}
 .tab{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:19px;color:var(--ink-3);font-size:11px;font-weight:650;letter-spacing:.01em;transition:color .2s,background-color .25s var(--ease-out),transform .16s var(--ease-out)}
 .tab:active{transform:scale(.94)}
