@@ -454,7 +454,7 @@ function renderInfo(){
     '<p class="group-label">About this page</p><ul class="list">' +
       '<li class="prose"><p>An unofficial pocket version of the Config India 2026 Day 2 agenda. Adding a session here doesn’t reserve a seat. Check the <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> for last-minute changes.</p></li>' +
     '</ul>' +
-    '<p class="credit">Made using <span class="nw">Figma Make</span> &amp; <span class="nw">Claude Code</span> by <span class="nw">Waqar Khan</span> <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>';
+    '<p class="credit">Made using lots of love &amp; tokens by <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>';
 }
 
 /* ======================================================================
@@ -571,10 +571,10 @@ function speakerSheet(k){
 }
 function friendsSheet(){
   const steps = CAN_LINK
-    ? ['Your friend opens Config Pocket, adds their sessions, then taps <b>Share plan</b> in My plan.',
+    ? ['Your friend opens Config Pokedex, adds their sessions, then taps <b>Share plan</b> in My plan.',
        'They send you the link. Tap it and choose <b>Compare with my plan</b>. Their sessions show up next to yours.',
        'Got a message with a <b>CI2-</b> code instead? Paste it below with their name.']
-    : ['Your friend opens Config Pocket, adds their sessions, then taps <b>Share plan</b> in My plan.',
+    : ['Your friend opens Config Pokedex, adds their sessions, then taps <b>Share plan</b> in My plan.',
        'They send you the message. Paste it below with their name and tap <b>Add their plan</b>.'];
   return '<h2 class="sh-title" id="sheetTitle" style="font-size:27px">Plans with friends</h2>' +
     '<ol class="steps">' + steps.map(t => '<li><span>' + t + '</span></li>').join('') + '</ol>' +
@@ -665,14 +665,14 @@ function planText(){
   mine.forEach(it => lines.push(fT(it.sm) + ' · ' + (it.kind === 'event' ? ctxTitle(it) : fullTitle(it))));
   lines.push('');
   if (CAN_LINK) lines.push('Compare with yours: ' + shareLink());
-  else lines.push('Plan code: ' + encodePlan(Array.from(S.picks)), 'Paste it in Config Pocket, under Friends, to see where we overlap.');
+  else lines.push('Plan code: ' + encodePlan(Array.from(S.picks)), 'Paste it in Config Pokedex, under Friends, to see where we overlap.');
   return lines.join('\n');
 }
 const waURL = () => 'https://wa.me/?text=' + encodeURIComponent(planText() || '');
 function shareSheet(){
   const txt = planText() || '';
   return '<h2 class="sh-title" id="sheetTitle" style="font-size:27px">Share your plan</h2>' +
-    '<p class="hint" style="margin-top:8px">' + (CAN_LINK ? 'Friends tap the link to see your sessions next to theirs.' : 'Friends paste the code in Config Pocket to see your sessions next to theirs.') + '</p>' +
+    '<p class="hint" style="margin-top:8px">' + (CAN_LINK ? 'Friends tap the link to see your sessions next to theirs.' : 'Friends paste the code in Config Pokedex to see your sessions next to theirs.') + '</p>' +
     '<div class="form" style="margin-top:14px"><div><label for="myname">Your first name</label><input id="myname" type="text" maxlength="24" autocomplete="given-name" placeholder="So friends know whose plan it is" value="' + esc(S.me) + '"></div></div>' +
     '<div class="sh-actions">' +
       '<a class="btn primary" id="shareWA" href="' + esc(waURL()) + '" target="_blank" rel="noopener noreferrer">' + svg('chat') + 'Send on WhatsApp</a>' +

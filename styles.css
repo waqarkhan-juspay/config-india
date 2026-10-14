@@ -7,7 +7,7 @@
   --sab: env(safe-area-inset-bottom, 0px);
 
   /* Neutrals: exhibition-hall concrete, slightly warm */
-  --bg:#F1F1EE; --card:#FFFFFF; --ink:#131313; --ink-2:#5A5A55; --ink-3:#8B8B84;
+  --bg:#F1F1EE; --card:#FFFFFF; --ink:#131313; --ink-2:#5A5A55; --ink-3:#8B8B84; --shine:#C4C4BC;
   --line:#E4E4DE; --line-2:#D2D2CA; --fill:#E9E9E4; --fill-2:#F6F6F3;
   --glass:rgba(241,241,238,.82); --glass-2:rgba(255,255,255,.86); --scrim:rgba(19,19,19,.38);
   --focus:#2F6BFF;
@@ -321,6 +321,9 @@ h1,h2,h3,p{margin:0}
 .credit{margin-top:22px;font-size:13px;line-height:1.5;color:var(--ink-2);text-align:center;text-wrap:balance}
 .credit .nw{white-space:nowrap}
 .credit a{color:var(--ink);font-weight:650;text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px}
+/* a soft highlight sweeping across the handle, like a "thinking" shimmer */
+.credit a{background:linear-gradient(100deg, var(--ink) 0%, var(--ink) 38%, var(--shine) 50%, var(--ink) 62%, var(--ink) 100%) 0 0/250% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:shine 2.6s cubic-bezier(.4,0,.2,1) infinite}
+@keyframes shine{0%{background-position:100% 0}70%,100%{background-position:-50% 0}}
 
 /* ---------- lists (speakers, info) ---------- */
 .field{position:relative}

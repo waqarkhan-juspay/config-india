@@ -1,7 +1,7 @@
-# Config India Pocket Agenda
+# Config Pokedex
 
 An unofficial, phone-first agenda for **Config India 2026, Day 2** (Thu, Oct 15, BIEC Bengaluru).
-Browse the day, add sessions to your plan, see what's live, and compare plans with friends using a short plan code.
+Browse the day, add sessions to your plan, see what's live, and share your plan on WhatsApp to compare with friends.
 
 Plain HTML, CSS and JavaScript. No framework, no build step, no backend.
 
