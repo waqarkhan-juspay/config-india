@@ -769,3 +769,35 @@ window.AGENDA = {
     }
   }
 };
+
+// Speaker headshots from the Config agenda, used with permission from Figma. Run site_photos.py to regenerate.
+window.SPEAKER_PHOTOS = {
+  "dylan-field": "images/speakers/dylan-field.webp",
+  "arjun-singh": "images/speakers/arjun-singh.webp",
+  "animesh-mishra": "images/speakers/animesh-mishra.webp",
+  "ashish-kashyap": "images/speakers/ashish-kashyap.webp",
+  "saptarshi-prakash": "images/speakers/saptarshi-prakash.webp",
+  "ken-vreman": "images/speakers/ken-vreman.webp",
+  "parinishtha-yadav": "images/speakers/parinishtha-yadav.webp",
+  "daisuke-sakai": "images/speakers/daisuke-sakai.webp",
+  "manish-kumar": "images/speakers/manish-kumar.webp",
+  "samantha-lee": "images/speakers/samantha-lee.webp",
+  "jake-albaugh": "images/speakers/jake-albaugh.webp",
+  "megan-bednarczyk": "images/speakers/megan-bednarczyk.webp",
+  "nav-pawera": "images/speakers/nav-pawera.webp",
+  "debabrata-nayak": "images/speakers/debabrata-nayak.webp",
+  "meghna-seshadri": "images/speakers/meghna-seshadri.webp",
+  "matt-walker": "images/speakers/matt-walker.webp",
+  "viral-shah": "images/speakers/viral-shah.webp",
+  "alexia-danton": "images/speakers/alexia-danton.webp",
+  "michel-ferreira": "images/speakers/michel-ferreira.webp",
+  "alex-mullans": "images/speakers/alex-mullans.webp",
+  "priyanka-srinivasagopalan": "images/speakers/priyanka-srinivasagopalan.webp",
+  "sascha-michael-trinkaus": "images/speakers/sascha-michael-trinkaus.webp",
+  "kaushal-cavale": "images/speakers/kaushal-cavale.webp",
+  "shahee-nannore-hiran": "images/speakers/shahee-nannore-hiran.webp",
+  "rhish-neog": "images/speakers/rhish-neog.webp",
+  "soren-iverson": "images/speakers/soren-iverson.webp",
+  "masaba-gupta": "images/speakers/masaba-gupta.webp",
+  "loredana-crisan": "images/speakers/loredana-crisan.webp"
+};

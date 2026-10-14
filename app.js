@@ -5,7 +5,7 @@
    Data: Config India 2026, Day 2 (Thu Oct 15), from config.figma.com/india/agenda/?day=2
    ====================================================================== */
 const D = window.AGENDA;            // data.js
-const PH = {};                      // speaker photos: none, initials are shown
+const PH = window.SPEAKER_PHOTOS || {};   // data.js; speakers without one show initials
 
 const LOC = {
   main:{name:'Main Stage', short:'Main Stage', hall:'Hall 5'},
@@ -22,6 +22,7 @@ const hm = s => { const p = s.split(':'); return (+p[0]) * 60 + (+p[1]); };
 const toMs = min => DAY0 + min * 60000;
 const DOORS = hm(D.info[0].time);                    // 07:00
 const DAY_END = hm('20:00');
+let planEditOpen = false;                          // My plan: "Manage plan" panel open?
 let simBase = null;                                // a previewed moment (frozen), or null for real time
 function readSim(){
   const m = /^#t(\d{2})(\d{2})$/.exec(location.hash || '');
@@ -46,6 +47,7 @@ ITEMS.forEach(x => (x.sp || []).forEach(k => SP[k].items.push(x.id)));
 const SP_KEYS = Object.keys(SP).sort((a, b) => SP[a].name.localeCompare(SP[b].name));
 const TALKS = ITEMS.filter(x => x.kind === 'talk');
 const KEYNOTES = ITEMS.filter(x => x.theme === 'keynote');
+const LC_N = ITEMS.filter(x => x.loc === 'lcl').length;
 
 function inits(n){ const p = String(n).split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
 function av(k, size, cls){ const s = SP[k]; const th = BY[s.items[0]].theme; return '<span class="av t-' + th + (PH[k] ? ' ph' : '') + (cls ? ' ' + cls : '') + '"' + (PH[k] ? ' data-k="' + k + '"' : '') + ' style="--s:' + size + 'px" aria-hidden="true">' + esc(inits(s.name)) + '</span>'; }
@@ -56,10 +58,14 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 // Show an eyebrow only when the title doesn't already say it ("Figma product keynote" needs no "Opening keynote").
 const eyeOf = it => it.eyebrow && it.title.toLowerCase().indexOf(it.eyebrow.split(' ').pop().toLowerCase()) < 0 ? it.eyebrow : '';
+// Keynote cards are tagged "Keynote" instead of their room, so their "Opening/Closing keynote" eyebrow moves to the sheet only.
+const cardTag = it => it.theme === 'keynote' ? 'Keynote' : LOC[it.loc].short;
+const cardEye = it => it.theme === 'keynote' ? '' : eyeOf(it);
 const fullTitle = it => eyeOf(it) ? eyeOf(it) + ': ' + it.title : it.title;
 // Where the room is on screen, LC events drop their "Leadership Collective" prefix.
 const ctxTitle = it => { if (it.loc !== 'lcl' || it.kind !== 'event') return it.title; const t = it.title.replace(/^Leadership Collective\s+/i, ''); return t === 'Lounge' ? 'Lounge open' : t.charAt(0).toUpperCase() + t.slice(1); };
 const lockIC = it => it.loc === 'lcl' ? '<span class="lock">' + svg('lock') + '</span>' : '';
+const dot = t => /[….!?]$/.test(t) ? t : t + '.';   // no "…." after a cut title
 const shortTitle = (it, n) => { n = n || 46; const t = it.title; return t.length > n ? t.slice(0, n - 1).replace(/[\s,:;]+\S*$/, '') + '…' : t; };
 const spNames = it => (it.sp || []).map(k => SP[k].name);
 const joinNames = a => a.length <= 1 ? (a[0] || '') : a.length === 2 ? a[0] + ' and ' + a[1] : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
@@ -70,6 +76,7 @@ function evIcon(it){ const t = it.title.toLowerCase(); if (/tea/.test(t)) return
 
 /* ---------- icons ---------- */
 const IC = {
+  sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.2 4.2"/>',
   chev:'<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
   ext:'<path d="M8 16L16 8M9.5 8H16v6.5"/>',
@@ -193,8 +200,8 @@ function talkCard(it, ctx){
   const clash = ctx && ctx.clash && ctx.clash.length ? '<p class="note warn">' + svg('warn') + '<span>Overlaps with ' + esc(shortTitle(ctx.clash[0], 52)) + ' (' + fT(ctx.clash[0].sm) + ')' + (ctx.clash.length > 1 ? ' and ' + (ctx.clash.length - 1) + ' more' : '') + '</span></p>' : '';
   return '<article class="card t-' + it.theme + (on ? ' is-picked' : '') + (live ? ' is-live' : '') + (past ? ' is-past' : '') + '" data-id="' + it.id + '">' +
     '<button class="hit" type="button" data-open="' + it.id + '" aria-label="' + esc(fullTitle(it)) + ', ' + fRange(it.sm, it.em) + ', ' + L.name + (it.loc === 'lcl' ? ', invite-only' : '') + '. Open details"></button>' +
-    '<div class="card-top"><span class="tag"><i></i>' + L.short + lockIC(it) + '</span><span class="card-time">' + fRange(it.sm, it.em) + '</span>' + status + '</div>' +
-    (eyeOf(it) ? '<p class="card-eyebrow">' + esc(eyeOf(it)) + '</p>' : '') +
+    '<div class="card-top"><span class="tag"><i></i>' + cardTag(it) + lockIC(it) + '</span><span class="card-time">' + fRange(it.sm, it.em) + '</span>' + status + '</div>' +
+    (cardEye(it) ? '<p class="card-eyebrow">' + esc(cardEye(it)) + '</p>' : '') +
     '<h3 class="card-title">' + esc(it.title) + '</h3>' +
     (names.length ? '<div class="who"><span class="faces">' + it.sp.slice(0, 3).map(k => av(k, 26)).join('') + '</span><span class="who-names">' + esc(names.join(', ')) + '</span></div>' : '') +
     palsHTML(it.id) + clash +
@@ -292,18 +299,22 @@ function renderStatus(){
 function renderSchedule(){
   const v = V.schedule;
   if (!v.firstChild){
-    v.innerHTML = '<div class="lt" id="lt-schedule"><p class="eyebrow">Config India 2026 · Day 2</p><h1 class="lt-title">Thursday <span>Oct 15</span></h1></div>' +
+    v.innerHTML = '<h1 class="sr">Schedule, Thursday Oct 15</h1>' +
       '<div class="badge" id="status"></div>' +
       '<div class="chips-wrap" id="chipsWrap"><div class="chips" id="chips" role="group" aria-label="Filter the schedule"></div>' +
-      '<button class="lc-chip" id="lcChip" type="button" role="switch" aria-checked="false" data-act="lc" aria-label="Show LC items (Leadership Collective, invite-only)" title="Leadership Collective (invite-only)">LC<span class="mini-switch" aria-hidden="true"><i></i></span></button></div>' +
+      '<button class="lc-chip" id="lcChip" type="button" role="switch" aria-checked="false" data-act="lc" aria-label="Show the ' + LC_N + ' LC items (Leadership Collective, invite-only)" title="Leadership Collective (invite-only)">LC<span class="n">' + LC_N + '</span><span class="mini-switch" aria-hidden="true"><i></i></span></button></div>' +
       '<ol class="tl" id="tl" aria-label="Sessions in time order"></ol>';
   }
   renderStatus();
   $('#lcChip').setAttribute('aria-checked', S.showLC);
+  // Drop a chip that would show exactly what an earlier one shows (with LC hidden, every talk is on the Main Stage).
+  const seen = new Map(); let on = S.filter;
   $('#chips').innerHTML = FILTERS.map(f => {
-    const n = ITEMS.filter(it => lcOK(it) && matches(it, f[0])).length;
-    return '<button class="chip" type="button" data-filter="' + f[0] + '" aria-pressed="' + (S.filter === f[0]) + '">' + f[1] + '<span class="n">' + n + '</span></button>';
-  }).join('');
+    const ids = ITEMS.filter(it => lcOK(it) && matches(it, f[0])).map(it => it.id), key = ids.join();
+    if (seen.has(key)){ if (on === f[0]) on = seen.get(key); return ''; }
+    seen.set(key, f[0]);
+    return {f, n: ids.length};
+  }).filter(Boolean).map(({f, n}) => '<button class="chip" type="button" data-filter="' + f[0] + '" aria-pressed="' + (on === f[0]) + '">' + f[1] + '<span class="n">' + n + '</span></button>').join('');
   const t = now();
   const list = ITEMS.filter(it => lcOK(it) && matches(it, S.filter));
   const done = list.filter(it => isPast(it, t)), rest = list.filter(it => !isPast(it, t));
@@ -365,7 +376,7 @@ function renderPlan(){
     h += '<ol class="tl" style="margin-top:22px" aria-label="Your sessions in time order">' + doneHTML('plan', doneRows, doneMine) + rows.map(r => r.html).join('') +
          (!restMine.length && doneMine.length ? allDoneHTML('Your plan is done for today.') : '') + '</ol>';
   }
-  h += '<p class="foot">' + storageLine() + '</p>';
+  h += planEditHTML() + '<p class="foot">' + storageLine() + '</p>';
   ensurePlanShell();
   $('#planTop').innerHTML = top;
   $('#planBody').innerHTML = h;
@@ -374,10 +385,21 @@ function gapHTML(a, b, anyLC){
   const ga = toMs(a), gb = toMs(b);
   const sugs = ITEMS.filter(it => !S.picks.has(it.id) && (anyLC || it.loc !== 'lcl') && (
       (it.kind === 'event' && it.s < gb && it.e > ga) ||
-      (it.kind === 'talk' && it.s >= ga && it.e <= gb)));
+      (it.kind === 'talk' && it.s >= ga && it.e <= gb))).sort((x, y) => x.s - y.s);
   const f = f12(a);
+  // every unpicked option in the gap, in time order; meals and lounges already open when the gap starts show when they close
+  const when = it => it.s < ga ? 'until ' + fT(it.em) : fT(it.sm);
   return '<li class="gap"><div class="slot-time" aria-hidden="true" style="position:static"><b>' + f.t + '</b><small>' + f.ap + '</small></div><div class="gap-body"><p class="gap-title">' + fDur(b - a) + ' free</p>' +
-    (sugs.length ? '<div class="sugs">' + sugs.slice(0, 3).map(it => '<button class="sug t-' + it.theme + '" type="button" data-open="' + it.id + '"><i></i><span>' + esc(it.kind === 'event' ? it.title + (it.em !== b ? ' · until ' + fT(it.em) : '') : shortTitle(it, 34) + ' · ' + f12(it.sm).t) + '</span></button>').join('') + '</div>' : '') + '</div></li>';
+    (sugs.length ? '<div class="sugs">' + sugs.map(it => '<button class="sug t-' + it.theme + '" type="button" data-open="' + it.id + '" aria-label="' + esc(it.title) + ', ' + when(it) + '"><i></i><b class="sug-t">' + when(it) + '</b><span>' + esc(it.title) + '</span></button>').join('') + '</div>' : '') + '</div></li>';
+}
+// Friends and "clear everything", folded under a quiet button at the end of My plan.
+function planEditHTML(){
+  if (!S.picks.size && !S.friends.length) return '';
+  return '<div class="plan-edit"><button class="plan-edit-btn" type="button" data-act="plan-edit" aria-expanded="' + planEditOpen + '" aria-controls="planEdit">' + svg('sliders') + 'Manage plan' + svg('chev') + '</button>' +
+    '<ul class="list" id="planEdit" style="--inset:48px"' + (planEditOpen ? '' : ' hidden') + '>' +
+      '<li><button class="list-link" type="button" data-act="friends"><span style="display:flex;gap:12px;align-items:center">' + svg('users') + (S.friends.length ? 'Friends’ plans (' + S.friends.length + ')' : 'Compare plans with friends') + '</span>' + svg('chev') + '</button></li>' +
+      '<li><button class="list-link" type="button" data-act="clear" id="clearBtn" style="color:var(--live)"><span style="display:flex;gap:12px;align-items:center">' + svg('trash') + '<span id="clearLabel">Clear my plan and friends</span></span></button></li>' +
+    '</ul></div>';
 }
 function storageLine(){
   const until = 'until the end of Fri, Oct 16';
@@ -417,23 +439,17 @@ function renderInfo(){
   v.innerHTML =
     '<div class="lt" id="lt-info"><p class="eyebrow">Thu, Oct 15</p><h1 class="lt-title">Venue &amp; info</h1></div>' +
     '<ul class="list" style="--inset:48px">' +
-      '<li class="irow">' + svg('pin') + '<div><b>Bangalore International Exhibition Centre</b><span>Tumakuru Road, Bengaluru</span></div></li>' +
+      '<li><a class="irow irow-link" href="https://www.google.com/maps/search/?api=1&amp;query=Bangalore+International+Exhibition+Centre" target="_blank" rel="noopener noreferrer" aria-label="Bangalore International Exhibition Centre, Tumakuru Road, Bengaluru. Open in Google Maps">' + svg('pin') + '<div><b>Bangalore International Exhibition Centre</b><span>Tumakuru Road, Bengaluru</span></div>' + svg('ext') + '</a></li>' +
       '<li class="irow">' + svg('live') + '<div><b>Hall 5 · Main Stage</b><span>Keynotes and talks, all livestreamed.</span></div></li>' +
       '<li class="irow">' + svg('cup') + '<div><b>Hall 4 · Cafe</b><span>Breakfast, morning tea, lunch and the closing reception.</span></div></li>' +
       '<li class="irow">' + svg('sofa') + '<div><b>Hall 4 · Leadership Collective Lounge</b><span>Sessions, meals and a reception.</span></div></li>' +
-      '<li><a class="list-link" href="https://www.google.com/maps/search/?api=1&amp;query=Bangalore+International+Exhibition+Centre" target="_blank" rel="noopener noreferrer">Open in Google Maps' + svg('ext') + '</a></li>' +
     '</ul>' +
     '<p class="group-label">Leadership Collective (LC)</p>' + lcToggleHTML(S.showLC ? 'Shown everywhere' : 'Hidden everywhere') +
     '<p class="lc-note">Invite-only: you need an LC badge to get in. Anything already in your plan stays there either way.</p>' +
-    '<p class="group-label">Your plan</p><ul class="list" style="--inset:48px">' +
-      '<li><button class="list-link" type="button" data-act="friends"><span style="display:flex;gap:12px;align-items:center">' + svg('users') + (S.friends.length ? 'Friends’ plans (' + S.friends.length + ')' : 'Compare plans with friends') + '</span>' + svg('chev') + '</button></li>' +
-      (S.picks.size || S.friends.length ? '<li><button class="list-link" type="button" data-act="clear" id="clearBtn" style="color:var(--live)"><span style="display:flex;gap:12px;align-items:center">' + svg('trash') + '<span id="clearLabel">Clear my plan and friends</span></span></button></li>' : '') +
-    '</ul>' +
     '<p class="group-label">About this page</p><ul class="list">' +
-      '<li class="prose"><p>An unofficial pocket version of the Config India 2026 Day 2 agenda. Times, rooms and speakers come from the public schedule on config.figma.com as of ' + esc(D.asof) + '. Session summaries are short paraphrases; each session links to its official page for the full write-up.</p><p>Adding a session here doesn’t reserve a seat. Check the official agenda for last-minute changes.</p></li>' +
-      '<li><a class="list-link" href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">Official agenda' + svg('ext') + '</a></li>' +
+      '<li class="prose"><p>An unofficial pocket version of the Config India 2026 Day 2 agenda.</p><p>Adding a session here doesn’t reserve a seat. Check the <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> for last-minute changes.</p></li>' +
     '</ul>' +
-    '<p class="credit">Vibecoded by Waqar Khan <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>';
+    '<p class="credit">Made using Figma Make &amp; Claude Code by Waqar Khan <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>';
 }
 
 /* ======================================================================
@@ -590,13 +606,16 @@ function renderSearch(){
    Actions
    ====================================================================== */
 let toastTimer = 0;
-function toast(msg, action){
-  const el = $('#toast');
-  el.innerHTML = '<span class="toast-msg">' + esc(msg) + '</span>' + (action ? '<button type="button">' + esc(action.label) + '</button>' : '');
+function toast(msg, action, o){
+  const el = $('#toast'); o = o || {};
+  el.classList.toggle('rich', !!o.title);
+  el.innerHTML = (o.icon ? svg(o.icon) : '') + '<span class="toast-msg">' + (o.title ? '<b>' + esc(o.title) + '</b>' : '') + (Array.isArray(msg) ? msg.filter(Boolean).map(m => '<span>' + esc(m) + '</span>').join('') : esc(msg)) + '</span>' + (action ? '<button type="button">' + esc(action.label) + '</button>' : '');
   if (action) el.querySelector('button').addEventListener('click', () => { hideToast(); action.fn(); });
   el.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, action ? 4200 : 2600);
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, o.ms || (action ? 4200 : 2600));
 }
+// From config.figma.com: Leadership Collective is invite-only, its sessions are "for Leadership Collective attendees".
+const LC_NOTE = 'This one’s for Leadership Collective attendees, so not everyone can get in. Have an LC pass? You’re all set.';
 function hideToast(){ $('#toast').classList.remove('show'); }
 function haptic(ms){ try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {} }
 
@@ -610,8 +629,10 @@ function toggle(id){
   $$('[data-id="' + id + '"]').forEach(c => c.classList.toggle('is-picked', on));
   updateBadge(true);
   if (on){
-    const c = clashesFor(it);
-    toast(c.length ? 'Added. It overlaps with ' + shortTitle(c[0], 34) + '.' : 'Added to your plan', S.tab === 'plan' ? null : {label: 'View', fn: () => { closeSheet(); go('plan'); }});
+    const c = clashesFor(it), view = S.tab === 'plan' ? null : {label: 'View', fn: () => { closeSheet(); go('plan'); }};
+    const over = c.length ? 'Overlaps with ' + dot(shortTitle(c[0], 44)) : '';
+    if (it.loc === 'lcl') toast([LC_NOTE, over], view, {title: 'Added · Invite-only', icon: 'lock', ms: c.length ? 8000 : 6500});
+    else toast(c.length ? 'Added. It overlaps with ' + dot(shortTitle(c[0], 34)) : 'Added to your plan', view);
   } else {
     toast('Removed from your plan', {label: 'Undo', fn: () => { setPick(id, true); refreshAll(); updateBadge(true); }});
   }
@@ -667,6 +688,7 @@ function addFriend(){
 
 let clearArmed = 0;
 const actions = {
+  'plan-edit'(t){ planEditOpen = !planEditOpen; t.setAttribute('aria-expanded', planEditOpen); const l = $('#planEdit'); if (l) l.hidden = !planEditOpen; if (planEditOpen) requestAnimationFrame(() => l.scrollIntoView({block: 'nearest', behavior: 'smooth'})); },
   search(){ openSheet({type: 'search', q: ''}); },
   lc(t){
     S.showLC = !S.showLC;
