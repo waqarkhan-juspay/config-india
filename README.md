@@ -16,7 +16,6 @@ Vibecoded by Waqar Khan ([@waqarkh4n](https://x.com/waqarkh4n)).
 | `app.js` | The app: schedule, My plan, speakers, venue, sheets, time scrubber |
 | `data.js` | Agenda data (sessions, rooms, speakers) |
 | `images/banner.webp` | Art strip in the hero card |
-| `fonts/` | Timeless Serif for the page titles, with its license |
 | `favicon.svg` | Tab icon |
 
 ## Run it locally
@@ -39,7 +38,8 @@ or drag the time scrubber at the bottom.
 
 ## Notes
 
-- **Saved plans** live in each visitor's browser (`localStorage`) until the end of Fri, Oct 16. Nothing is sent to a server.
+- **Saved plans** live in each visitor's browser (`localStorage`) until the end of Fri, Oct 16. Plans are never sent to a server; shared plans travel inside the link's `#` part.
+- **Visitor stats** use [Vercel Web Analytics](https://vercel.com/docs/analytics): anonymous, no cookies. Turn it on in the Vercel dashboard under your project's **Analytics** tab, then redeploy. Unique visitors and page views show up there.
 - **Data** comes from the public schedule on config.figma.com as of Oct 14, 2026. Summaries and bios are short paraphrases, and every session links to its official page.
-- **Fonts:** Inter and DM Mono load from Google Fonts. Timeless Serif is by [Timeless](https://timeless.co) under the Timeless Free Font License 1.2 (`fonts/LICENSE.pdf`). It may be embedded in websites but not put in a public repository, so `fonts/` is in `.gitignore` by default. See the comment there.
+- **Fonts:** Inter, Newsreader (page titles) and DM Mono, all free from Google Fonts under the SIL Open Font License.
 - Not affiliated with Figma. Adding a session here doesn't reserve a seat.

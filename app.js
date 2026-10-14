@@ -58,9 +58,10 @@ const $ = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 // Show an eyebrow only when the title doesn't already say it ("Figma product keynote" needs no "Opening keynote").
 const eyeOf = it => it.eyebrow && it.title.toLowerCase().indexOf(it.eyebrow.split(' ').pop().toLowerCase()) < 0 ? it.eyebrow : '';
-// Keynote cards are tagged "Keynote" instead of their room, so their "Opening/Closing keynote" eyebrow moves to the sheet only.
-const cardTag = it => it.theme === 'keynote' ? 'Keynote' : LOC[it.loc].short;
-const cardEye = it => it.theme === 'keynote' ? '' : eyeOf(it);
+// Plain "Main Stage Hall 5" text for cards and rows; LC places get the lock.
+const whereHTML = it => '<span class="mi loc">' + LOC[it.loc].short + ' <span class="hall">' + LOC[it.loc].hall + '</span>' + lockIC(it) + '</span>';
+// Keynote cards always say which keynote it is ("Opening keynote" even though the title says keynote).
+const cardEye = it => it.theme === 'keynote' && it.eyebrow ? it.eyebrow : eyeOf(it);
 const fullTitle = it => eyeOf(it) ? eyeOf(it) + ': ' + it.title : it.title;
 // Where the room is on screen, LC events drop their "Leadership Collective" prefix.
 const ctxTitle = it => { if (it.loc !== 'lcl' || it.kind !== 'event') return it.title; const t = it.title.replace(/^Leadership Collective\s+/i, ''); return t === 'Lounge' ? 'Lounge open' : t.charAt(0).toUpperCase() + t.slice(1); };
@@ -76,6 +77,9 @@ function evIcon(it){ const t = it.title.toLowerCase(); if (/tea/.test(t)) return
 
 /* ---------- icons ---------- */
 const IC = {
+  share:'<path d="M12 3.8v11"/><path d="M8 7.6l4-3.8 4 3.8"/><path d="M5.5 12.5v5.2a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-5.2"/>',
+  chat:'<path d="M4.6 19.4l1.3-3.7a7.6 7.6 0 1 1 2.8 2.6z"/>',
+  link:'<path d="M10.2 13.8a3.8 3.8 0 0 0 5.4 0l2.7-2.7a3.8 3.8 0 0 0-5.4-5.4l-1 1"/><path d="M13.8 10.2a3.8 3.8 0 0 0-5.4 0l-2.7 2.7a3.8 3.8 0 0 0 5.4 5.4l1-1"/>',
   sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.2 4.2"/>',
   chev:'<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
@@ -106,7 +110,7 @@ const svg = (n, cls) => '<svg class="ic' + (cls ? ' ' + cls : '') + '" viewBox="
    ====================================================================== */
 const STORE = 'config-india-2026-day2';
 const EXPIRES = Date.UTC(2026, 9, 16, 18, 30);      // end of Fri Oct 16, IST
-const S = {picks: new Set(), friends: [], filter: 'all', updated: 0, tab: 'schedule', storage: 'local', done: {schedule: false, plan: false}, showLC: false};
+const S = {picks: new Set(), friends: [], filter: 'all', updated: 0, tab: 'schedule', storage: 'local', done: {schedule: false, plan: false}, showLC: false, me: ''};
 let memCopy = null;
 
 function loadState(){
@@ -119,6 +123,7 @@ function loadState(){
   if (FILTERS.some(f => f[0] === d.filter)) S.filter = d.filter;
   if (d.done && typeof d.done === 'object') S.done = {schedule: !!d.done.schedule, plan: !!d.done.plan};
   S.showLC = !!d.showLC;
+  S.me = String(d.me || '').replace(/\s+/g, ' ').trim().slice(0, 24);
   if (!S.showLC && S.filter === 'lcl') S.filter = 'all';
 }
 function applyDoc(d){
@@ -128,7 +133,7 @@ function applyDoc(d){
 }
 function saveState(touch){
   if (touch) S.updated = Date.now();
-  const d = {v: 1, picks: Array.from(S.picks), friends: S.friends.map(f => ({name: f.name, code: f.code})), filter: S.filter, done: S.done, showLC: S.showLC, updated: S.updated, expires: EXPIRES};
+  const d = {v: 1, picks: Array.from(S.picks), friends: S.friends.map(f => ({name: f.name, code: f.code})), filter: S.filter, done: S.done, showLC: S.showLC, me: S.me, updated: S.updated, expires: EXPIRES};
   memCopy = d;
   try { localStorage.setItem(STORE, JSON.stringify(d)); S.storage = 'local'; } catch (e) { S.storage = 'memory'; }
 }
@@ -200,10 +205,9 @@ function talkCard(it, ctx){
   const clash = ctx && ctx.clash && ctx.clash.length ? '<p class="note warn">' + svg('warn') + '<span>Overlaps with ' + esc(shortTitle(ctx.clash[0], 52)) + ' (' + fT(ctx.clash[0].sm) + ')' + (ctx.clash.length > 1 ? ' and ' + (ctx.clash.length - 1) + ' more' : '') + '</span></p>' : '';
   return '<article class="card t-' + it.theme + (on ? ' is-picked' : '') + (live ? ' is-live' : '') + (past ? ' is-past' : '') + '" data-id="' + it.id + '">' +
     '<button class="hit" type="button" data-open="' + it.id + '" aria-label="' + esc(fullTitle(it)) + ', ' + fRange(it.sm, it.em) + ', ' + L.name + (it.loc === 'lcl' ? ', invite-only' : '') + '. Open details"></button>' +
-    '<div class="card-top"><span class="tag"><i></i>' + cardTag(it) + lockIC(it) + '</span><span class="card-time">' + fRange(it.sm, it.em) + '</span>' + status + '</div>' +
-    (cardEye(it) ? '<p class="card-eyebrow">' + esc(cardEye(it)) + '</p>' : '') +
-    '<h3 class="card-title">' + esc(it.title) + '</h3>' +
+    '<div class="card-head">' + (cardEye(it) ? '<p class="card-eyebrow">' + esc(cardEye(it)) + '</p>' : '') + '<h3 class="card-title">' + esc(it.title) + '</h3></div>' +
     (names.length ? '<div class="who"><span class="faces">' + it.sp.slice(0, 3).map(k => av(k, 26)).join('') + '</span><span class="who-names">' + esc(names.join(', ')) + '</span></div>' : '') +
+    '<p class="card-meta">' + status + '<span class="mi">' + fRange(it.sm, it.em) + '</span>' + whereHTML(it) + '</p>' +
     palsHTML(it.id) + clash +
     (live ? '<div class="prog"><i data-prog="' + it.id + '" style="--p:' + progPct(it, t) + '%"></i></div>' : '') +
     addBtn(it) + '</article>';
@@ -214,7 +218,7 @@ function eventCard(it){
   return '<article class="ev t-' + it.theme + (on ? ' is-picked' : '') + (live ? ' is-live' : '') + (past ? ' is-past' : '') + '" data-id="' + it.id + '">' +
     '<button class="hit" type="button" data-open="' + it.id + '" aria-label="' + esc(it.title) + ', ' + fRange(it.sm, it.em) + ', ' + L.name + (it.loc === 'lcl' ? ', invite-only' : '') + '. Open details"></button>' +
     '<span class="ev-ico">' + svg(evIcon(it)) + '</span>' +
-    '<div><p class="ev-title">' + esc(ctxTitle(it)) + '</p><p class="ev-meta">' + (live ? '<span class="pill live"><i></i>Now</span>' : '') + '<span>' + fRange(it.sm, it.em) + '</span><span>·</span><span class="loc">' + L.short + lockIC(it) + '</span></p>' + palsHTML(it.id) + '</div>' +
+    '<div><p class="ev-title">' + esc(ctxTitle(it)) + '</p><p class="ev-meta">' + (live ? '<span class="pill live"><i></i>Now</span>' : '') + '<span class="mi">' + fRange(it.sm, it.em) + '</span>' + whereHTML(it) + '</p>' + palsHTML(it.id) + '</div>' +
     addBtn(it) + '</article>';
 }
 const itemHTML = (it, ctx) => it.kind === 'talk' ? talkCard(it, ctx) : eventCard(it);
@@ -264,8 +268,10 @@ function choose(list){
 function renderStatus(){
   const el = $('#status'); if (!el) return;
   const t = now(), ph = phase(t);
-  const sim = simBase != null ? '<span class="b-sim">Preview</span>' : '';
-  const head = (l, r) => '<span class="b-head"><span>' + l + '</span><span class="r">' + sim + (r || '') + '</span></span>';
+  const head = (l, r) => '<span class="b-head"><span>' + l + '</span><span class="r">' + (r || '') + '</span></span>';
+  const where = it => LOC[it.loc].short + ' <span class="b-hall">' + LOC[it.loc].hall + '</span>';
+  const more = '<span class="b-more">More details' + svg('chev') + '</span>';
+  const who = it => '<span class="who b-who">' + (it.sp && it.sp.length ? '<span class="faces">' + it.sp.slice(0, 3).map(k => av(k, 24)).join('') + '</span><span class="who-names">' + esc(spNames(it).join(', ')) + ' <span class="b-dot">·</span> ' + where(it) + '</span>' : '<span class="who-names">' + where(it) + '</span>') + '</span>';
   const next = (it, label) => it ? '<button class="b-next" type="button" data-open="' + it.id + '"><span class="b-k">' + label + '</span><span class="b-v">' + esc(it.title) + '</span><span class="b-k">' + f12(it.sm).t + '</span></button>' : '';
   let h = '';
   if (ph === 'before'){
@@ -276,16 +282,15 @@ function renderStatus(){
   } else if (ph === 'during'){
     const cur = choose(ITEMS.filter(i => isLive(i, t) && vis(i)));
     const up = ITEMS.filter(i => i.s > t && vis(i));
-    const nextMine = up.find(i => S.picks.has(i.id) && i.kind === 'talk') || up.find(i => S.picks.has(i.id));
     const nextTalk = up.find(i => i.kind === 'talk' && i.loc === 'main') || up.find(i => i.kind === 'talk');
     if (cur){
-      h = '<button class="b-now" type="button" data-open="' + cur.id + '">' + head('<span class="b-live"><i></i>Now · ' + LOC[cur.loc].short + '</span>', '<span data-left="' + cur.id + '">' + fIn(cur.e - t) + ' left</span>') +
-          '<span class="b-title">' + esc(ctxTitle(cur)) + '</span><span class="b-prog"><i data-prog="' + cur.id + '" style="--p:' + progPct(cur, t) + '%"></i></span></button>' +
-          next(nextMine || nextTalk, 'Next');
+      h = '<button class="b-now" type="button" data-open="' + cur.id + '">' + head('<span class="b-live"><i></i>Now</span>', more) +
+          '<span class="b-title">' + esc(ctxTitle(cur)) + '</span>' + who(cur) +
+          '<span class="b-foot"><span class="b-prog"><i data-prog="' + cur.id + '" style="--p:' + progPct(cur, t) + '%"></i></span><span class="b-left" data-left="' + cur.id + '">' + fIn(cur.e - t) + ' left</span></span></button>';
     } else if (nextTalk){
-      const after = nextMine && nextMine.id !== nextTalk.id ? nextMine : null;
-      h = '<button class="b-now" type="button" data-open="' + nextTalk.id + '">' + head('Up next · ' + LOC[nextTalk.loc].short, '<span data-in="' + nextTalk.id + '" data-pre="in ">in ' + fIn(nextTalk.s - t) + '</span>') +
-          '<span class="b-title">' + esc(nextTalk.title) + '</span></button>' + next(after, 'Yours');
+      h = '<button class="b-now" type="button" data-open="' + nextTalk.id + '">' + head('Up next', more) +
+          '<span class="b-title">' + esc(nextTalk.title) + '</span>' + who(nextTalk) +
+          '<span class="b-foot"><span class="b-left" data-in="' + nextTalk.id + '" data-pre="Starts in ">Starts in ' + fIn(nextTalk.s - t) + '</span></span></button>';
     } else {
       h = head('Config India') + '<span class="b-title">That was the last talk.</span>';
     }
@@ -353,9 +358,9 @@ function renderPlan(){
     top = h; h = '';
     h += '<div class="empty"><div class="empty-art" aria-hidden="true"></div><h2>Nothing planned yet</h2><p>Tap + on any session. It lands here in time order, with free time and overlaps worked out.</p>' +
          '<div class="empty-actions"><button class="btn primary" type="button" data-act="keynotes">' + svg('plus') + 'Add the 3 keynotes</button><button class="btn" type="button" data-goto="schedule">Browse the schedule</button>' +
-         '<button class="btn" type="button" data-act="friends">' + svg('users') + (S.friends.length ? 'Friends’ plans (' + S.friends.length + ')' : 'Add a friend’s plan') + '</button></div></div>';
+         '<button class="btn" type="button" data-act="friends">' + svg('users') + (S.friends.length ? 'Friends’ plans (' + S.friends.length + ')' : 'Add friends') + '</button></div></div>';
   } else {
-    h += '<div class="plan-actions"><button class="btn primary" type="button" data-act="copy">' + svg('copy') + 'Copy plan</button><button class="btn" type="button" data-act="friends">' + svg('users') + 'Friends' + (S.friends.length ? ' · ' + S.friends.length : '') + '</button></div>';
+    h += '<div class="plan-actions"><button class="btn primary" type="button" data-act="share">' + svg('share') + 'Share plan</button><button class="btn" type="button" data-act="friends">' + svg('users') + 'Add friends</button></div>';
     if (S.friends.length){
       h += '<div class="friends-strip">' + S.friends.map((f, i) => { const shared = f.ids.filter(id => S.picks.has(id)).length; return '<button class="fchip" type="button" data-act="friends"><span class="pal" style="--pc:' + friendColor(i) + '">' + esc(initial(f.name)) + '</span>' + esc(f.name) + '<small>' + shared + ' together</small></button>'; }).join('') + '</div>';
     }
@@ -445,11 +450,11 @@ function renderInfo(){
       '<li class="irow">' + svg('sofa') + '<div><b>Hall 4 · Leadership Collective Lounge</b><span>Sessions, meals and a reception.</span></div></li>' +
     '</ul>' +
     '<p class="group-label">Leadership Collective (LC)</p>' + lcToggleHTML(S.showLC ? 'Shown everywhere' : 'Hidden everywhere') +
-    '<p class="lc-note">Invite-only: you need an LC badge to get in. Anything already in your plan stays there either way.</p>' +
+    '<p class="lc-note">Invite-only: you need an LC pass to get in. Anything already in your plan stays there either way.</p>' +
     '<p class="group-label">About this page</p><ul class="list">' +
-      '<li class="prose"><p>An unofficial pocket version of the Config India 2026 Day 2 agenda.</p><p>Adding a session here doesn’t reserve a seat. Check the <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> for last-minute changes.</p></li>' +
+      '<li class="prose"><p>An unofficial pocket version of the Config India 2026 Day 2 agenda. Adding a session here doesn’t reserve a seat. Check the <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> for last-minute changes.</p></li>' +
     '</ul>' +
-    '<p class="credit">Made using Figma Make &amp; Claude Code by Waqar Khan <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>';
+    '<p class="credit">Made using <span class="nw">Figma Make</span> &amp; <span class="nw">Claude Code</span> by <span class="nw">Waqar Khan</span> <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>';
 }
 
 /* ======================================================================
@@ -462,6 +467,8 @@ function sheetHTML(view){
   if (view.type === 'speaker') return speakerSheet(view.id);
   if (view.type === 'friends') return friendsSheet();
   if (view.type === 'search') return searchSheet();
+  if (view.type === 'share') return shareSheet();
+  if (view.type === 'incoming') return incomingSheet(view);
   if (view.type === 'copy') return '<h2 class="sh-title" id="sheetTitle" style="font-size:24px">Copy your plan</h2><p class="hint">Your browser blocked automatic copying. Select the text below and copy it.</p><textarea class="copy-box" id="copyBox" readonly>' + esc(view.text) + '</textarea>';
   return '';
 }
@@ -475,6 +482,7 @@ function paintSheet(anim, keepScroll){
   $('#sheetCrumb').textContent = crumb(view);
   if (keepScroll) sbody.scrollTop = y; else sbody.scrollTop = 0;
   if (anim){ sbody.classList.remove('anim'); void sbody.offsetWidth; sbody.classList.add('anim'); }
+  if (view.type === 'share') wireShare();
   if (view.type === 'search'){ const q = $('#sq'); q.value = view.q || ''; q.addEventListener('input', () => { view.q = q.value; renderSearch(); }); renderSearch(); }
 }
 function openSheet(view){
@@ -523,13 +531,6 @@ document.addEventListener('keydown', e => {
   head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
 })();
 
-function gcalURL(it){
-  const z = ms => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const L = LOC[it.loc];
-  const details = (it.desc || []).join('\n\n') + (spNames(it).length ? '\n\nWith ' + joinNames(spNames(it)) + '.' : '') + '\n\n' + it.url;
-  const p = new URLSearchParams({action: 'TEMPLATE', text: fullTitle(it) + ' · Config India', dates: z(it.s) + '/' + z(it.e), details: details, location: L.name + ', ' + L.hall + ' at BIEC, Bengaluru', ctz: 'Asia/Kolkata'});
-  return 'https://calendar.google.com/calendar/render?' + p.toString();
-}
 function miniRow(it){
   const on = S.picks.has(it.id);
   return '<div class="mini t-' + it.theme + (on ? ' is-picked' : '') + '" data-id="' + it.id + '"><button class="hit" type="button" data-open="' + it.id + '" aria-label="' + esc(fullTitle(it)) + ', ' + fRange(it.sm, it.em) + '"></button><div style="min-width:0"><p class="mini-k"><i></i>' + fRange(it.sm, it.em) + ' · ' + LOC[it.loc].short + '</p><p class="mini-t">' + esc(ctxTitle(it)) + '</p></div>' + addBtn(it) + '</div>';
@@ -544,16 +545,16 @@ function sessionSheet(it){
   else if (phase(t) !== 'after') status = '<span class="pill soon" data-in="' + it.id + '" data-pre="Starts in ">Starts in ' + fIn(it.s - t) + '</span>';
   return '<div class="t-' + it.theme + '">' +
     (status ? '<div class="sh-tags">' + status + '</div>' : '') +
-    (eyeOf(it) ? '<p class="sh-eyebrow">' + esc(eyeOf(it)) + '</p>' : '') +
+    (cardEye(it) ? '<p class="sh-eyebrow">' + esc(cardEye(it)) + '</p>' : '') +
     '<h2 class="sh-title" id="sheetTitle">' + esc(ctxTitle(it)) + '</h2>' +
+    (it.desc && it.desc.length ? '<div class="body-copy sh-lede">' + it.desc.map(p => '<p>' + esc(p) + '</p>').join('') + '</div>' : '') +
     '<dl class="facts"><div class="fact"><dt>When</dt><dd>' + fRange(it.sm, it.em) + (it.doors ? '<span>Doors ' + fT(hm(it.doors)) + '</span>' : '') + '</dd></div>' +
     '<div class="fact"><dt>Where</dt><dd>' + L.name + '<span>' + L.hall + ' at BIEC</span></dd></div></dl>' +
     '<div class="sh-actions"><button class="btn primary' + (on ? ' on' : '') + '" type="button" data-toggle="' + it.id + '" aria-pressed="' + on + '">' + (on ? svg('check') + 'In your plan · tap to remove' : svg('plus') + 'Add to my plan') + '</button>' +
-    '<div class="row-btns"><a class="btn" href="' + esc(gcalURL(it)) + '" target="_blank" rel="noopener noreferrer">' + svg('cal') + 'Google Calendar</a><a class="btn" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer">' + svg('ext') + 'Official page</a></div></div>' +
+    '<a class="btn block" href="' + esc(it.url) + '" target="_blank" rel="noopener noreferrer">' + svg('ext') + 'Official page</a></div>' +
     (clash.length ? '<p class="note warn">' + svg('warn') + '<span>' + (on ? 'Overlaps with ' : 'This overlaps with ') + clash.map(c => esc(shortTitle(c, 50)) + ' (' + fT(c.sm) + ')').join(' and ') + (on ? ' in your plan.' : ', already in your plan.') + '</span></p>' : '') +
     (palsHTML(it.id) ? '<div style="margin-top:12px">' + palsHTML(it.id) + '</div>' : '') +
     ((it.live || it.loc === 'lcl') ? '<div class="sh-flags">' + (it.live ? '<span>' + svg('live') + 'Livestreamed</span>' : '') + (it.loc === 'lcl' ? '<span>' + svg('lock') + 'Invite-only</span>' : '') + '</div>' : '') +
-    (it.desc && it.desc.length ? '<section class="sec"><h3 class="h-sec">In short</h3><div class="body-copy">' + it.desc.map(p => '<p>' + esc(p) + '</p>').join('') + '</div></section>' : '') +
     ((it.sp || []).length ? '<section class="sec"><h3 class="h-sec">' + (it.sp.length > 1 ? 'Speakers' : 'Speaker') + '</h3><div class="people">' + it.sp.map(k => { const s = SP[k]; return '<button class="person" type="button" data-speaker="' + k + '">' + av(k, 52, 'sq') + '<span style="min-width:0"><b>' + esc(s.name) + '</b><span>' + esc([s.role, s.org].filter(Boolean).join(', ')) + '</span></span>' + svg('chev') + '</button>'; }).join('') + '</div></section>' : '') +
     (same.length ? '<section class="sec"><h3 class="h-sec">At the same time</h3>' + same.map(miniRow).join('') + '</section>' : '') +
     '</div>';
@@ -569,13 +570,15 @@ function speakerSheet(k){
     (s.bio && s.bio.length ? '<section class="sec"><h3 class="h-sec">In short</h3><div class="body-copy">' + s.bio.map(p => '<p>' + esc(p) + '</p>').join('') + '</div></section>' : '');
 }
 function friendsSheet(){
-  const mine = Array.from(S.picks);
-  const code = mine.length ? encodePlan(mine) : '';
+  const steps = CAN_LINK
+    ? ['Your friend opens Config Pocket, adds their sessions, then taps <b>Share plan</b> in My plan.',
+       'They send you the link. Tap it and choose <b>Compare with my plan</b>. Their sessions show up next to yours.',
+       'Got a message with a <b>CI2-</b> code instead? Paste it below with their name.']
+    : ['Your friend opens Config Pocket, adds their sessions, then taps <b>Share plan</b> in My plan.',
+       'They send you the message. Paste it below with their name and tap <b>Add their plan</b>.'];
   return '<h2 class="sh-title" id="sheetTitle" style="font-size:27px">Plans with friends</h2>' +
-    '<p class="hint" style="margin-top:8px">Send your plan to friends, add theirs, and every session shows who’s going.</p>' +
-    '<div class="code-card"><p class="eyebrow">Your plan code</p>' +
-      (code ? '<div class="code">' + code + '</div><button class="btn block" type="button" data-act="copy">' + svg('copy') + 'Copy my plan to share</button><p>The copied message lists your sessions and ends with this code.</p>'
-            : '<p style="color:var(--badge-ink)">Add a few sessions first. Your code appears here.</p>') + '</div>' +
+    '<ol class="steps">' + steps.map(t => '<li><span>' + t + '</span></li>').join('') + '</ol>' +
+    '<p class="hint" style="margin-top:12px">To send yours, tap <b>Share plan</b> in My plan.</p>' +
     '<section class="sec"><h3 class="h-sec">Add a friend’s plan</h3><div class="form">' +
       '<div><label for="fname">Their name</label><input id="fname" type="text" maxlength="24" autocomplete="off" placeholder="e.g. Priya"></div>' +
       '<div><label for="fcode">Their message or plan code</label><textarea id="fcode" rows="3" placeholder="Paste the message they sent you, or just the CI2-… code"></textarea></div>' +
@@ -652,13 +655,67 @@ function updateBadge(bump){
   renderLanes(); updateScrubber();
   if (bump && n){ b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
 }
+// A link carries the plan in its #hash (never sent to a server). Inside an embed (the Claude page) there's no
+// shareable address, so the message carries the plan code instead.
+const CAN_LINK = (() => { try { return window.top === window.self && /^https?:$/.test(location.protocol); } catch (e) { return false; } })();
+function shareLink(){ return location.origin + location.pathname + '#p=' + encodePlan(Array.from(S.picks)) + (S.me ? '&n=' + encodeURIComponent(S.me) : ''); }
 function planText(){
   const mine = picked(); if (!mine.length) return null;
-  const lines = ['My Config India plan · Thu, Oct 15 (IST)', ''];
-  mine.forEach(it => lines.push(fT(it.sm) + ' · ' + (it.kind === 'event' ? ctxTitle(it) : fullTitle(it)) + ' · ' + LOC[it.loc].short));
-  lines.push('', 'Plan code: ' + encodePlan(Array.from(S.picks)));
-  lines.push('Paste this into the Config India Pocket Agenda to see where we overlap.');
+  const lines = [(S.me ? S.me + '’s' : 'My') + ' Config India plan · Thu, Oct 15', ''];
+  mine.forEach(it => lines.push(fT(it.sm) + ' · ' + (it.kind === 'event' ? ctxTitle(it) : fullTitle(it))));
+  lines.push('');
+  if (CAN_LINK) lines.push('Compare with yours: ' + shareLink());
+  else lines.push('Plan code: ' + encodePlan(Array.from(S.picks)), 'Paste it in Config Pocket, under Friends, to see where we overlap.');
   return lines.join('\n');
+}
+const waURL = () => 'https://wa.me/?text=' + encodeURIComponent(planText() || '');
+function shareSheet(){
+  const txt = planText() || '';
+  return '<h2 class="sh-title" id="sheetTitle" style="font-size:27px">Share your plan</h2>' +
+    '<p class="hint" style="margin-top:8px">' + (CAN_LINK ? 'Friends tap the link to see your sessions next to theirs.' : 'Friends paste the code in Config Pocket to see your sessions next to theirs.') + '</p>' +
+    '<div class="form" style="margin-top:14px"><div><label for="myname">Your first name</label><input id="myname" type="text" maxlength="24" autocomplete="given-name" placeholder="So friends know whose plan it is" value="' + esc(S.me) + '"></div></div>' +
+    '<div class="sh-actions">' +
+      '<a class="btn primary" id="shareWA" href="' + esc(waURL()) + '" target="_blank" rel="noopener noreferrer">' + svg('chat') + 'Send on WhatsApp</a>' +
+      (navigator.share ? '<button class="btn block" type="button" data-act="share-native">' + svg('share') + 'More options</button>' : '') +
+      '<button class="btn block" type="button" data-act="share-copy">' + svg(CAN_LINK ? 'link' : 'copy') + (CAN_LINK ? 'Copy link' : 'Copy message') + '</button>' +
+    '</div>' +
+    '<section class="sec"><h3 class="h-sec">Message</h3><p class="share-preview" id="sharePrev">' + esc(txt) + '</p></section>';
+}
+function wireShare(){
+  const inp = $('#myname'); if (!inp) return;
+  inp.addEventListener('input', () => {
+    S.me = inp.value.replace(/\s+/g, ' ').trim().slice(0, 24); saveState(false);
+    const a = $('#shareWA'); if (a) a.href = waURL();
+    const pv = $('#sharePrev'); if (pv) pv.textContent = planText() || '';
+  });
+}
+async function copyShare(){
+  const txt = CAN_LINK ? shareLink() : planText();
+  let ok = false;
+  try { await navigator.clipboard.writeText(txt); ok = true; } catch (e) { ok = false; }
+  if (ok) toast(CAN_LINK ? 'Link copied. Paste it anywhere.' : 'Plan copied. Paste it anywhere.');
+  else { openSheet({type: 'copy', text: txt}); setTimeout(() => { const b = $('#copyBox'); if (b){ b.focus(); b.select(); } }, 80); }
+}
+// Someone opened a shared link: show their plan, then let them compare or copy it in.
+function readShared(){
+  const m = /^#p=([0-9A-Za-z-]+)(?:&n=([^&]*))?$/.exec(location.hash || '');
+  if (!m) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  const ids = decodePlan(m[1]);
+  let name = ''; try { name = m[2] ? decodeURIComponent(m[2]).replace(/\s+/g, ' ').trim().slice(0, 24) : ''; } catch (e) {}
+  if (!ids || !ids.length){ toast('That plan link doesn’t look right. Ask your friend to share it again.'); return; }
+  openSheet({type: 'incoming', ids, name});
+}
+function incomingSheet(v){
+  const shared = v.ids.filter(id => S.picks.has(id)).length;
+  const known = S.friends.some(f => f.code === encodePlan(v.ids));
+  return '<h2 class="sh-title" id="sheetTitle" style="font-size:27px">' + (v.name ? esc(v.name) + '’s plan' : 'A friend’s plan') + '</h2>' +
+    '<p class="hint" style="margin-top:8px">' + v.ids.length + ' session' + (v.ids.length > 1 ? 's' : '') + (S.picks.size ? ' · ' + shared + ' also in yours' : '') + '</p>' +
+    '<div class="sh-actions">' +
+      '<button class="btn primary" type="button" data-act="incoming-compare">' + svg('users') + (known ? 'Already comparing · update' : 'Compare with my plan') + '</button>' +
+      '<button class="btn block" type="button" data-act="incoming-add">' + svg('plus') + 'Add all to my plan</button>' +
+    '</div>' +
+    '<section class="sec"><h3 class="h-sec">Their sessions</h3>' + v.ids.map(id => BY[id]).filter(Boolean).sort((a, b) => a.s - b.s).map(miniRow).join('') + '</section>';
 }
 async function copyPlan(){
   const txt = planText();
@@ -710,6 +767,28 @@ const actions = {
     S.done[view] = open; saveState(false);
   },
   copy(){ copyPlan(); },
+  share(){ if (!S.picks.size){ toast('Add a session first, then share your plan.'); return; } openSheet({type: 'share'}); },
+  'share-native'(){ const txt = planText(); if (txt && navigator.share) navigator.share({text: txt}).catch(() => {}); },
+  'share-copy'(){ copyShare(); },
+  'incoming-compare'(){
+    const v = Sheet.stack[Sheet.stack.length - 1]; if (!v || v.type !== 'incoming') return;
+    const code = encodePlan(v.ids);
+    let i = S.friends.findIndex(f => f.code === code || (v.name && f.name.toLowerCase() === v.name.toLowerCase()));
+    const name = v.name ? cleanName(v.name) : (i >= 0 ? S.friends[i].name : 'Friend ' + (S.friends.length + 1));
+    if (i >= 0) S.friends[i] = {name, code, ids: v.ids};
+    else { if (S.friends.length >= 8){ toast('You can compare with up to 8 friends. Remove one first.'); return; } S.friends.push({name, code, ids: v.ids}); }
+    saveState(true); closeSheet();
+    toast('Comparing with ' + name + ' · ' + v.ids.filter(id => S.picks.has(id)).length + ' sessions together', {label: 'View', fn: () => go('plan')});
+    refreshAll();
+  },
+  'incoming-add'(){
+    const v = Sheet.stack[Sheet.stack.length - 1]; if (!v || v.type !== 'incoming') return;
+    const add = v.ids.filter(id => BY[id] && !S.picks.has(id));
+    if (!add.length){ toast('All of these are already in your plan.'); return; }
+    add.forEach(id => S.picks.add(id)); saveState(true); updateBadge(true); closeSheet();
+    toast('Added ' + add.length + ' session' + (add.length > 1 ? 's' : '') + ' to your plan', {label: 'Undo', fn: () => { add.forEach(id => S.picks.delete(id)); saveState(true); updateBadge(false); refreshAll(); }});
+    refreshAll();
+  },
   friends(){ openSheet({type: 'friends'}); },
   'friend-add': addFriend,
   'friend-merge'(t){ const f = S.friends[+t.dataset.i]; if (!f) return; const before = new Set(S.picks); const add = f.ids.filter(id => BY[id] && !S.picks.has(id)); if (!add.length) return; add.forEach(id => S.picks.add(id)); saveState(true); updateBadge(true); haptic(); toast('Added ' + add.length + ' of ' + f.name + '’s sessions to yours', {label: 'Undo', fn: () => { S.picks = before; saveState(true); updateBadge(false); refreshAll(); }}); refreshAll(); },
@@ -798,7 +877,7 @@ function tick(){
 }
 setInterval(tick, 15000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
-window.addEventListener('hashchange', () => { readSim(); handleHashTab(); lastSig = ''; tick(); updateScrubber(); });
+window.addEventListener('hashchange', () => { if (/^#p=/.test(location.hash)) { readShared(); return; } readSim(); handleHashTab(); lastSig = ''; tick(); updateScrubber(); });
 function handleHashTab(){ const h = (location.hash || '').slice(1); if (V[h]) go(h); }
 
 /* ---------- time scrubber: preview any moment of Oct 15 ---------- */
@@ -911,6 +990,7 @@ loadState();
 renderSchedule();
 updateBadge(false);
 handleHashTab();
+readShared();
 scrubLayout();
 updateScrubber();
 chrome();
