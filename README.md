@@ -7,6 +7,8 @@ Plain HTML, CSS and JavaScript. No framework, no build step, no backend.
 
 Vibecoded by Waqar Khan ([@waqarkh4n](https://x.com/waqarkh4n)).
 
+> **Disclaimer:** Config Pokedex is an unofficial community project. It is not made, endorsed or sponsored by Figma, and has no affiliation with Figma, Inc. or Config. Figma and Config are trademarks of Figma, Inc. Session details and speaker photos come from the public Config agenda and belong to their owners.
+
 ## Files
 
 | File | What it is |
@@ -16,7 +18,7 @@ Vibecoded by Waqar Khan ([@waqarkh4n](https://x.com/waqarkh4n)).
 | `app.js` | The app: schedule, My plan, speakers, venue, sheets, time scrubber |
 | `data.js` | Agenda data (sessions, rooms, speakers) |
 | `images/banner.webp` | Art strip in the hero card |
-| `favicon.svg` | Tab icon |
+| `favicon.png`, `apple-touch-icon.png` | Tab and home-screen icons, cropped from the art strip |
 
 ## Run it locally
 
@@ -42,4 +44,4 @@ or drag the time scrubber at the bottom.
 - **Visitor stats** use [Vercel Web Analytics](https://vercel.com/docs/analytics): anonymous, no cookies. Turn it on in the Vercel dashboard under your project's **Analytics** tab, then redeploy. Unique visitors and page views show up there.
 - **Data** comes from the public schedule on config.figma.com as of Oct 14, 2026. Summaries and bios are short paraphrases, and every session links to its official page.
 - **Fonts:** Inter, Newsreader (page titles) and DM Mono, all free from Google Fonts under the SIL Open Font License.
-- Not affiliated with Figma. Adding a session here doesn't reserve a seat.
+- Adding a session here doesn't reserve a seat.

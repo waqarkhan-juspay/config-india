@@ -311,7 +311,8 @@ function renderSchedule(){
       '<div class="badge" id="status"></div>' +
       '<div class="chips-wrap" id="chipsWrap"><div class="chips" id="chips" role="group" aria-label="Filter the schedule"></div>' +
       '<button class="lc-chip" id="lcChip" type="button" role="switch" aria-checked="false" data-act="lc" aria-label="Show the ' + LC_N + ' LC items (Leadership Collective, invite-only)" title="Leadership Collective (invite-only)"><span class="cdots lc-dot" aria-hidden="true"><i class="t-lounge"></i></span>LC<span class="n">' + LC_N + '</span><span class="mini-switch" aria-hidden="true"><i></i></span></button></div>' +
-      '<ol class="tl" id="tl" aria-label="Sessions in time order"></ol>';
+      '<ol class="tl" id="tl" aria-label="Sessions in time order"></ol>' +
+      '<p class="foot">Unofficial community project. Not affiliated with Figma.</p>';
   }
   renderStatus();
   $('#lcChip').setAttribute('aria-checked', S.showLC);
@@ -463,10 +464,11 @@ function renderInfo(){
     '</ul>' +
     '<p class="group-label">Leadership Collective (LC)</p>' + lcToggleHTML(S.showLC ? 'Shown everywhere' : 'Hidden everywhere') +
     '<p class="lc-note">Invite-only: you need an LC pass to get in. Anything already in your plan stays there either way.</p>' +
-    '<p class="group-label">About this page</p><ul class="list">' +
-      '<li class="prose"><p>An unofficial pocket version of the Config India 2026 Day 2 agenda. Adding a session here doesn’t reserve a seat. Check the <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> for last-minute changes.</p></li>' +
+    '<p class="group-label">About this app</p><ul class="list">' +
+      '<li class="prose"><p>Config Pokedex is an unofficial community project. It is not made, endorsed or sponsored by Figma, and has no affiliation with Figma, Inc. or Config. It’s a pocket version of the Config India 2026 Day 2 agenda. Adding a session here doesn’t reserve a seat. Check the <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> for last-minute changes.</p></li>' +
     '</ul>' +
-    '<p class="credit">Made using lots of love &amp; tokens by <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>';
+    '<p class="credit">Made using lots of love &amp; tokens by <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>' +
+    '<p class="foot tm">Figma and Config are trademarks of Figma, Inc. Session details and speaker photos come from the public Config agenda and belong to their owners.</p>';
 }
 
 /* ======================================================================
