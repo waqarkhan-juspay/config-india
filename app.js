@@ -48,6 +48,7 @@ const SP_KEYS = Object.keys(SP).sort((a, b) => SP[a].name.localeCompare(SP[b].na
 const TALKS = ITEMS.filter(x => x.kind === 'talk');
 const KEYNOTES = ITEMS.filter(x => x.theme === 'keynote');
 const LC_N = ITEMS.filter(x => x.loc === 'lcl').length;
+const THEME_ORDER = ['keynote', 'stage', 'lounge', 'food', 'connect'];
 
 function inits(n){ const p = String(n).split(/\s+/).filter(Boolean); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
 function av(k, size, cls){ const s = SP[k]; const th = BY[s.items[0]].theme; return '<span class="av t-' + th + (PH[k] ? ' ph' : '') + (cls ? ' ' + cls : '') + '"' + (PH[k] ? ' data-k="' + k + '"' : '') + ' style="--s:' + size + 'px" aria-hidden="true">' + esc(inits(s.name)) + '</span>'; }
@@ -206,7 +207,7 @@ function talkCard(it, ctx){
   return '<article class="card t-' + it.theme + (on ? ' is-picked' : '') + (live ? ' is-live' : '') + (past ? ' is-past' : '') + '" data-id="' + it.id + '">' +
     '<button class="hit" type="button" data-open="' + it.id + '" aria-label="' + esc(fullTitle(it)) + ', ' + fRange(it.sm, it.em) + ', ' + L.name + (it.loc === 'lcl' ? ', invite-only' : '') + '. Open details"></button>' +
     '<div class="card-head">' + (cardEye(it) ? '<p class="card-eyebrow">' + esc(cardEye(it)) + '</p>' : '') + '<h3 class="card-title">' + esc(it.title) + '</h3></div>' +
-    (names.length ? '<div class="who"><span class="faces">' + it.sp.slice(0, 3).map(k => av(k, 26)).join('') + '</span><span class="who-names">' + esc(names.join(', ')) + '</span></div>' : '') +
+    (names.length ? '<div class="who"><span class="faces">' + it.sp.slice(0, 3).map(k => av(k, 26)).join('') + '</span><span class="who-names"><i class="cdot" aria-hidden="true"></i>' + esc(names.join(', ')) + '</span></div>' : '') +
     '<p class="card-meta">' + status + '<span class="mi">' + fRange(it.sm, it.em) + '</span>' + whereHTML(it) + '</p>' +
     palsHTML(it.id) + clash +
     (live ? '<div class="prog"><i data-prog="' + it.id + '" style="--p:' + progPct(it, t) + '%"></i></div>' : '') +
@@ -271,7 +272,7 @@ function renderStatus(){
   const head = (l, r) => '<span class="b-head"><span>' + l + '</span><span class="r">' + (r || '') + '</span></span>';
   const where = it => LOC[it.loc].short + ' <span class="b-hall">' + LOC[it.loc].hall + '</span>';
   const more = '<span class="b-more">More details' + svg('chev') + '</span>';
-  const who = it => '<span class="who b-who">' + (it.sp && it.sp.length ? '<span class="faces">' + it.sp.slice(0, 3).map(k => av(k, 24)).join('') + '</span><span class="who-names">' + esc(spNames(it).join(', ')) + ' <span class="b-dot">·</span> ' + where(it) + '</span>' : '<span class="who-names">' + where(it) + '</span>') + '</span>';
+  const who = it => '<span class="who b-who t-' + it.theme + '">' + (it.sp && it.sp.length ? '<span class="faces">' + it.sp.slice(0, 3).map(k => av(k, 24)).join('') + '</span><span class="who-names">' + '<i class="cdot" aria-hidden="true"></i>' + esc(spNames(it).join(', ')) + ' <span class="b-sep">·</span> ' + where(it) + '</span>' : '<span class="who-names"><i class="cdot" aria-hidden="true"></i>' + where(it) + '</span>') + '</span>';
   const next = (it, label) => it ? '<button class="b-next" type="button" data-open="' + it.id + '"><span class="b-k">' + label + '</span><span class="b-v">' + esc(it.title) + '</span><span class="b-k">' + f12(it.sm).t + '</span></button>' : '';
   let h = '';
   if (ph === 'before'){
@@ -307,7 +308,7 @@ function renderSchedule(){
     v.innerHTML = '<h1 class="sr">Schedule, Thursday Oct 15</h1>' +
       '<div class="badge" id="status"></div>' +
       '<div class="chips-wrap" id="chipsWrap"><div class="chips" id="chips" role="group" aria-label="Filter the schedule"></div>' +
-      '<button class="lc-chip" id="lcChip" type="button" role="switch" aria-checked="false" data-act="lc" aria-label="Show the ' + LC_N + ' LC items (Leadership Collective, invite-only)" title="Leadership Collective (invite-only)">LC<span class="n">' + LC_N + '</span><span class="mini-switch" aria-hidden="true"><i></i></span></button></div>' +
+      '<button class="lc-chip" id="lcChip" type="button" role="switch" aria-checked="false" data-act="lc" aria-label="Show the ' + LC_N + ' LC items (Leadership Collective, invite-only)" title="Leadership Collective (invite-only)"><span class="cdots lc-dot" aria-hidden="true"><i class="t-lounge"></i></span>LC<span class="n">' + LC_N + '</span><span class="mini-switch" aria-hidden="true"><i></i></span></button></div>' +
       '<ol class="tl" id="tl" aria-label="Sessions in time order"></ol>';
   }
   renderStatus();
@@ -315,11 +316,13 @@ function renderSchedule(){
   // Drop a chip that would show exactly what an earlier one shows (with LC hidden, every talk is on the Main Stage).
   const seen = new Map(); let on = S.filter;
   $('#chips').innerHTML = FILTERS.map(f => {
-    const ids = ITEMS.filter(it => lcOK(it) && matches(it, f[0])).map(it => it.id), key = ids.join();
+    const its = ITEMS.filter(it => lcOK(it) && matches(it, f[0])), key = its.map(it => it.id).join();
     if (seen.has(key)){ if (on === f[0]) on = seen.get(key); return ''; }
     seen.set(key, f[0]);
-    return {f, n: ids.length};
-  }).filter(Boolean).map(({f, n}) => '<button class="chip" type="button" data-filter="' + f[0] + '" aria-pressed="' + (on === f[0]) + '">' + f[1] + '<span class="n">' + n + '</span></button>').join('');
+    // the colours of the cards this chip shows ("All" is everything, so no dots)
+    const th = f[0] === 'all' ? [] : THEME_ORDER.filter(x => its.some(it => it.theme === x));
+    return {f, n: its.length, th};
+  }).filter(Boolean).map(({f, n, th}) => '<button class="chip" type="button" data-filter="' + f[0] + '" aria-pressed="' + (on === f[0]) + '">' + (th.length ? '<span class="cdots" aria-hidden="true">' + th.map(x => '<i class="t-' + x + '"></i>').join('') + '</span>' : '') + f[1] + '<span class="n">' + n + '</span></button>').join('');
   const t = now();
   const list = ITEMS.filter(it => lcOK(it) && matches(it, S.filter));
   const done = list.filter(it => isPast(it, t)), rest = list.filter(it => !isPast(it, t));
@@ -673,7 +676,7 @@ function shareSheet(){
   const txt = planText() || '';
   return '<h2 class="sh-title" id="sheetTitle" style="font-size:27px">Share your plan</h2>' +
     '<p class="hint" style="margin-top:8px">' + (CAN_LINK ? 'Friends tap the link to see your sessions next to theirs.' : 'Friends paste the code in Config Pokedex to see your sessions next to theirs.') + '</p>' +
-    '<div class="form" style="margin-top:14px"><div><label for="myname">Your first name</label><input id="myname" type="text" maxlength="24" autocomplete="given-name" placeholder="So friends know whose plan it is" value="' + esc(S.me) + '"></div></div>' +
+    '<div class="form" style="margin-top:14px"><div><label for="myname">Your first name</label><input id="myname" type="text" maxlength="24" autocomplete="given-name" required aria-required="true" aria-describedby="nameErr" placeholder="So friends know whose plan it is" value="' + esc(S.me) + '"><p class="err" id="nameErr" role="alert"></p></div></div>' +
     '<div class="sh-actions">' +
       '<a class="btn primary" id="shareWA" href="' + esc(waURL()) + '" target="_blank" rel="noopener noreferrer">' + svg('chat') + 'Send on WhatsApp</a>' +
       (navigator.share ? '<button class="btn block" type="button" data-act="share-native">' + svg('share') + 'More options</button>' : '') +
@@ -681,10 +684,21 @@ function shareSheet(){
     '</div>' +
     '<section class="sec"><h3 class="h-sec">Message</h3><p class="share-preview" id="sharePrev">' + esc(txt) + '</p></section>';
 }
+// Sharing needs a name, so friends know whose plan they're opening.
+function needName(){
+  if (S.me) return false;
+  const inp = $('#myname'), err = $('#nameErr');
+  if (err) err.textContent = 'Add your first name first, so friends know whose plan it is.';
+  if (inp){ inp.setAttribute('aria-invalid', 'true'); inp.focus(); }
+  haptic(12);
+  return true;
+}
 function wireShare(){
   const inp = $('#myname'); if (!inp) return;
+  const wa = $('#shareWA'); if (wa) wa.addEventListener('click', e => { if (needName()) e.preventDefault(); });
   inp.addEventListener('input', () => {
     S.me = inp.value.replace(/\s+/g, ' ').trim().slice(0, 24); saveState(false);
+    if (S.me){ inp.removeAttribute('aria-invalid'); const err = $('#nameErr'); if (err) err.textContent = ''; }
     const a = $('#shareWA'); if (a) a.href = waURL();
     const pv = $('#sharePrev'); if (pv) pv.textContent = planText() || '';
   });
@@ -768,8 +782,8 @@ const actions = {
   },
   copy(){ copyPlan(); },
   share(){ if (!S.picks.size){ toast('Add a session first, then share your plan.'); return; } openSheet({type: 'share'}); },
-  'share-native'(){ const txt = planText(); if (txt && navigator.share) navigator.share({text: txt}).catch(() => {}); },
-  'share-copy'(){ copyShare(); },
+  'share-native'(){ if (needName()) return; const txt = planText(); if (txt && navigator.share) navigator.share({text: txt}).catch(() => {}); },
+  'share-copy'(){ if (needName()) return; copyShare(); },
   'incoming-compare'(){
     const v = Sheet.stack[Sheet.stack.length - 1]; if (!v || v.type !== 'incoming') return;
     const code = encodePlan(v.ids);

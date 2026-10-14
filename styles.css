@@ -23,7 +23,7 @@
   --stage:#E8B000;   --stage-bg:#FFF2BD;   --stage-fg:#6E5200;     /* yellow */
   --food:#23A55A;    --food-bg:#E1F3E6;    --food-fg:#16613A;      /* kellyGreen */
   --connect:#FF8A65; --connect-bg:#FFE9E0; --connect-fg:#9C4127;   /* peach */
-  --lounge:#8B79C9;  --lounge-bg:#ECE8F6;  --lounge-fg:#4E4185;    /* dustyViolet */
+  --lounge:#7A56E8;  --lounge-bg:#ECE8F6;  --lounge-fg:#4E4185;    /* violet */
 
   /* Friends */
   --pal-1:#2F6BFF; --pal-2:#D63E8C; --pal-3:#0E9384; --pal-4:#7C5CF0; --pal-5:#D97706; --pal-6:#4B5B6B;
@@ -98,7 +98,6 @@ h1,h2,h3,p{margin:0}
 .b-foot{display:flex;align-items:center;gap:12px;margin-top:14px}
 .b-left{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--badge-ink);white-space:nowrap;font-variant-numeric:tabular-nums}
 .b-hall{opacity:.62}
-.b-dot{margin-inline:2px}
 .b-more{display:inline-flex;align-items:center;gap:2px;font-family:var(--f-ui);font-size:12.5px;font-weight:600;letter-spacing:-.005em;text-transform:none;color:var(--badge-ink)}
 .b-more .ic{width:14px;height:14px}
 .b-who{margin-top:10px;text-align:left}
@@ -132,6 +131,11 @@ h1,h2,h3,p{margin:0}
 .chip .n, .lc-chip .n{font-family:var(--f-mono);font-size:11px;font-weight:500;color:var(--ink-3)}
 .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--card)}
 .chip[aria-pressed="true"] .n{color:var(--ink-3)}
+.cdots{display:inline-flex;align-items:center}
+.cdots i{width:8px;height:8px;border-radius:50%;background:var(--tc);box-shadow:0 0 0 1.5px var(--card)}
+.cdots i + i{margin-left:-2px}
+.chip[aria-pressed="true"] .cdots i{box-shadow:0 0 0 1.5px var(--ink)}
+.lc-chip[aria-checked="false"] .lc-dot{display:none}
 
 /* ---------- timeline ---------- */
 .tl{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:18px}
@@ -173,6 +177,9 @@ h1,h2,h3,p{margin:0}
 @keyframes blink{50%{opacity:.35}}
 .pill.soon{background:var(--fill);color:var(--ink-2)}
 .pill.clash{background:var(--warn-soft);color:var(--warn)}
+/* colour dot: yellow Main Stage, orange keynote, violet LC Lounge (from the card's theme) */
+.cdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--tc);margin:0 6px 0 0;vertical-align:.12em;flex:none}
+.b-sep{margin-inline:2px}
 .card-eyebrow{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--tfg);margin-bottom:-4px}
 .card-title{font-size:17px;font-weight:700;line-height:1.24;letter-spacing:-.022em;text-wrap:pretty;padding-right:4px}
 .card-time{font-size:12.5px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -501,6 +508,9 @@ html.scrub-closed .scrub-pill{display:inline-flex}
 .form textarea{min-height:84px;line-height:1.4}
 .form input:focus,.form textarea:focus{border-color:var(--ink);background:var(--card)}
 .err{font-size:13px;color:var(--live);min-height:0}
+.err:empty{display:none}
+.form .err{margin-top:6px}
+.form input[aria-invalid="true"]{border-color:var(--live);background:var(--card)}
 .err:empty{display:none}
 .flist{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
 .flist li{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 8px 10px 12px;border:1px solid var(--line);border-radius:16px}

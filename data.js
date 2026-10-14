@@ -406,7 +406,7 @@ window.AGENDA = {
       "end": "20:00",
       "kind": "event",
       "title": "Closing reception",
-      "theme": "connect",
+      "theme": "food",
       "loc": "cafe",
       "desc": [
         "Drinks and celebration to close out Config India."
