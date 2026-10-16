@@ -22,6 +22,9 @@ const hm = s => { const p = s.split(':'); return (+p[0]) * 60 + (+p[1]); };
 const toMs = min => DAY0 + min * 60000;
 const DOORS = hm(D.info[0].time);                    // 07:00
 const DAY_END = hm('20:00');
+// Once Day 2 is over, the app becomes a record of the agenda: nothing reads as finished or live
+// unless you replay a moment with the time scrubber.
+const ARCHIVE = Date.now() >= toMs(DAY_END);
 let spFilter = 'all';                              // Speakers: which colour pill is on
 let planEditOpen = false;                          // My plan: "Manage plan" panel open?
 let simBase = null;                                // a previewed moment (frozen), or null for real time
@@ -29,7 +32,8 @@ function readSim(){
   const m = /^#t(\d{2})(\d{2})$/.exec(location.hash || '');
   if (m) simBase = toMs((+m[1]) * 60 + (+m[2]));
 }
-const now = () => simBase != null ? simBase : Date.now();
+const now = () => simBase != null ? simBase : ARCHIVE ? DAY0 : Date.now();
+const archived = () => ARCHIVE && simBase == null;
 const nowMin = () => (now() - DAY0) / 60000;
 function phase(t){ t = t == null ? now() : t; if (t < toMs(DOORS)) return 'before'; if (t >= toMs(DAY_END)) return 'after'; return 'during'; }
 
@@ -113,19 +117,21 @@ const svg = (n, cls) => '<svg class="ic' + (cls ? ' ' + cls : '') + '" viewBox="
    ====================================================================== */
 const STORE = 'config-india-2026-day2';
 const EXPIRES = Date.UTC(2026, 9, 16, 18, 30);      // end of Fri Oct 16, IST
-const S = {picks: new Set(), friends: [], filter: 'all', updated: 0, tab: 'schedule', storage: 'local', done: {schedule: false, plan: false}, showLC: false, me: ''};
+const S = {picks: new Set(), friends: [], filter: 'all', updated: 0, tab: 'schedule', storage: 'local', done: {schedule: false, plan: false}, showLC: true, me: ''};
 let memCopy = null;
 
 function loadState(){
   let d = null;
   try { const raw = localStorage.getItem(STORE); d = raw ? JSON.parse(raw) : null; }
   catch (e) { S.storage = 'memory'; d = memCopy; }
-  if (d && (d.v !== 1 || Date.now() > d.expires)) { try { localStorage.removeItem(STORE); } catch (e) {} d = null; }
+  if (d && d.v !== 1) { try { localStorage.removeItem(STORE); } catch (e) {} d = null; }
   if (!d) return;
   applyDoc(d);
   if (FILTERS.some(f => f[0] === d.filter)) S.filter = d.filter;
   if (d.done && typeof d.done === 'object') S.done = {schedule: !!d.done.schedule, plan: !!d.done.plan};
-  S.showLC = !!d.showLC;
+  S.showLC = d.showLC == null ? true : !!d.showLC;
+  // The archive shows LC to everyone once (during the event it was off by default); after that, the visitor's own toggle wins.
+  if (ARCHIVE && !d.lcArchive) S.showLC = true;
   S.me = String(d.me || '').replace(/\s+/g, ' ').trim().slice(0, 24);
   if (!S.showLC && S.filter === 'lcl') S.filter = 'all';
 }
@@ -136,7 +142,7 @@ function applyDoc(d){
 }
 function saveState(touch){
   if (touch) S.updated = Date.now();
-  const d = {v: 1, picks: Array.from(S.picks), friends: S.friends.map(f => ({name: f.name, code: f.code})), filter: S.filter, done: S.done, showLC: S.showLC, me: S.me, updated: S.updated, expires: EXPIRES};
+  const d = {v: 1, picks: Array.from(S.picks), friends: S.friends.map(f => ({name: f.name, code: f.code})), filter: S.filter, done: S.done, showLC: S.showLC, lcArchive: ARCHIVE, me: S.me, updated: S.updated, expires: EXPIRES};
   memCopy = d;
   try { localStorage.setItem(STORE, JSON.stringify(d)); S.storage = 'local'; } catch (e) { S.storage = 'memory'; }
 }
@@ -277,7 +283,14 @@ function renderStatus(){
   const who = it => '<span class="who b-who t-' + it.theme + '">' + (it.sp && it.sp.length ? '<span class="faces">' + it.sp.slice(0, 3).map(k => av(k, 24)).join('') + '</span><span class="who-names">' + '<i class="cdot" aria-hidden="true"></i>' + esc(spNames(it).join(', ')) + ' <span class="b-sep">·</span> ' + where(it) + '</span>' : '<span class="who-names"><i class="cdot" aria-hidden="true"></i>' + where(it) + '</span>') + '</span>';
   const next = (it, label) => it ? '<button class="b-next" type="button" data-open="' + it.id + '"><span class="b-k">' + label + '</span><span class="b-v">' + esc(it.title) + '</span><span class="b-k">' + f12(it.sm).t + '</span></button>' : '';
   let h = '';
-  if (ph === 'before'){
+  if (archived()){
+    const talks = ITEMS.filter(i => i.kind === 'talk' && lcOK(i));
+    const speakers = new Set([].concat.apply([], talks.map(i => i.sp || []))).size;
+    h = head('Config India 2026', 'Thu, Oct 15, 2026') +
+        '<span class="b-title">That’s a wrap on Day 2.</span>' +
+        '<span class="b-sub">' + talks.length + ' talks · ' + speakers + ' speakers · BIEC, Bengaluru</span>' +
+        '<button class="b-replay" type="button" data-act="replay">' + svg('clock') + 'Replay the day</button>';
+  } else if (ph === 'before'){
     const mine = picked(), first = mine.find(i => i.kind === 'talk') || mine[0];
     h = head('Doors open in') +
         '<span class="b-big" aria-label="Doors open in ' + fIn(toMs(DOORS) - t) + '">' + bigCount(toMs(DOORS) - t) + '</span>' +
@@ -328,7 +341,8 @@ function renderSchedule(){
   }).filter(Boolean).map(({f, n, th}) => '<button class="chip" type="button" data-filter="' + f[0] + '" aria-pressed="' + (on === f[0]) + '">' + (th.length ? '<span class="cdots" aria-hidden="true">' + th.map(x => '<i class="t-' + x + '"></i>').join('') + '</span>' : '') + f[1] + '<span class="n">' + n + '</span></button>').join('');
   const t = now();
   const list = ITEMS.filter(it => lcOK(it) && matches(it, S.filter));
-  const done = list.filter(it => isPast(it, t)), rest = list.filter(it => !isPast(it, t));
+  // after the event there's no "Completed" fold, even while replaying: the day stays laid out in full
+  const done = ARCHIVE ? [] : list.filter(it => isPast(it, t)), rest = ARCHIVE ? list : list.filter(it => !isPast(it, t));
   let rows = groupBy(rest).map(g => ({sm: g.sm, html: slotHTML(g)}));
   const doneRows = groupBy(done).map(g => ({sm: g.sm, html: slotHTML(g)}));
   D.info.forEach(inf => (done.length ? doneRows : rows).push({sm: hm(inf.time) - 0.5, html: infoRowHTML(inf)}));
@@ -373,7 +387,7 @@ function renderPlan(){
     top = h; h = '';
     // rows: groups of picked items, plus free-time rows between talks
     const t = now(), ctx = it => ({clash: clashMap[it.id]});
-    const doneMine = mine.filter(it => isPast(it, t)), restMine = mine.filter(it => !isPast(it, t));
+    const doneMine = ARCHIVE ? [] : mine.filter(it => isPast(it, t)), restMine = ARCHIVE ? mine : mine.filter(it => !isPast(it, t));
     let rows = groupBy(restMine).map(g => ({sm: g.sm, html: slotHTML(g, ctx)}));
     const doneRows = groupBy(doneMine).map(g => ({sm: g.sm, html: slotHTML(g, ctx)}));
     const anyLC = mine.some(i => i.loc === 'lcl');
@@ -413,9 +427,8 @@ function planEditHTML(){
     '</ul></div>';
 }
 function storageLine(){
-  const until = 'until the end of Fri, Oct 16';
   if (S.storage === 'memory') return 'This browser is blocking storage, so your plan lasts only while this page stays open.';
-  return 'Saved in this browser ' + until + '. Nothing leaves your phone.';
+  return 'Saved in this browser. Nothing leaves your phone.';
 }
 
 /* ---------- speakers ---------- */
@@ -463,9 +476,9 @@ function renderInfo(){
       '<li class="irow">' + svg('sofa') + '<div><b>Hall 4 · Leadership Collective Lounge</b><span>Sessions, meals and a reception.</span></div></li>' +
     '</ul>' +
     '<p class="group-label">Leadership Collective (LC)</p>' + lcToggleHTML(S.showLC ? 'Shown everywhere' : 'Hidden everywhere') +
-    '<p class="lc-note">Invite-only: you need an LC pass to get in. Anything already in your plan stays there either way.</p>' +
+    '<p class="lc-note">' + (ARCHIVE ? 'Invite-only: these sessions were for LC pass holders.' : 'Invite-only: you need an LC pass to get in.') + ' Anything already in your plan stays there either way.</p>' +
     '<p class="group-label">About this app</p><ul class="list">' +
-      '<li class="prose"><p>Config Pokedex is an unofficial community project. It is not made, endorsed or sponsored by Figma, and has no affiliation with Figma, Inc. or Config. It’s a pocket version of the Config India 2026 Day 2 agenda. Adding a session here doesn’t reserve a seat. Check the <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> for last-minute changes.</p></li>' +
+      '<li class="prose"><p>Config Pokedex is an unofficial community project. It is not made, endorsed or sponsored by Figma, and has no affiliation with Figma, Inc. or Config. ' + (ARCHIVE ? 'It was a pocket version of the Config India 2026 Day 2 agenda for Thu, Oct 15, 2026, and stays up as a record of the day. The <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> has Figma’s own page for every session.' : 'It’s a pocket version of the Config India 2026 Day 2 agenda. Adding a session here doesn’t reserve a seat. Check the <a href="https://config.figma.com/india/agenda/?day=2" target="_blank" rel="noopener noreferrer">official agenda</a> for last-minute changes.') + '</p></li>' +
     '</ul>' +
     '<p class="credit">Made using lots of love &amp; tokens by <a href="https://x.com/waqarkh4n" target="_blank" rel="noopener noreferrer">@waqarkh4n</a></p>' +
     '<p class="foot tm">Figma and Config are trademarks of Figma, Inc. Session details and speaker photos come from the public Config agenda and belong to their owners.</p>';
@@ -556,7 +569,7 @@ function sessionSheet(it){
   let status = '';
   if (live) status = '<span class="pill live"><i></i>Live · <span data-left="' + it.id + '">' + fIn(it.e - t) + ' left</span></span>';
   else if (past) status = '<span class="pill soon">Ended</span>';
-  else if (phase(t) !== 'after') status = '<span class="pill soon" data-in="' + it.id + '" data-pre="Starts in ">Starts in ' + fIn(it.s - t) + '</span>';
+  else if (!archived() && phase(t) !== 'after') status = '<span class="pill soon" data-in="' + it.id + '" data-pre="Starts in ">Starts in ' + fIn(it.s - t) + '</span>';
   return '<div class="t-' + it.theme + '">' +
     (status ? '<div class="sh-tags">' + status + '</div>' : '') +
     (cardEye(it) ? '<p class="sh-eyebrow">' + esc(cardEye(it)) + '</p>' : '') +
@@ -623,7 +636,7 @@ function toast(msg, action, o){
   clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, o.ms || (action ? 4200 : 2600));
 }
 // From config.figma.com: Leadership Collective is invite-only, its sessions are "for Leadership Collective attendees".
-const LC_NOTE = 'This one’s for Leadership Collective attendees, so not everyone can get in. Have an LC pass? You’re all set.';
+const LC_NOTE = ARCHIVE ? 'This one was for Leadership Collective attendees only.' : 'This one’s for Leadership Collective attendees, so not everyone can get in. Have an LC pass? You’re all set.';
 function hideToast(){ $('#toast').classList.remove('show'); }
 function haptic(ms){ try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {} }
 
@@ -737,6 +750,7 @@ let clearArmed = 0;
 const actions = {
   'plan-edit'(t){ planEditOpen = !planEditOpen; t.setAttribute('aria-expanded', planEditOpen); const l = $('#planEdit'); if (l) l.hidden = !planEditOpen; if (planEditOpen) requestAnimationFrame(() => l.scrollIntoView({block: 'nearest', behavior: 'smooth'})); },
   search(){ openSheet({type: 'search', q: ''}); },
+  replay(){ setScrubOpen(true); setSim(625); haptic(6); },     // drop in at the opening keynote
   lc(t){
     S.showLC = !S.showLC;
     if (!S.showLC && S.filter === 'lcl') S.filter = 'all';
@@ -945,13 +959,22 @@ function updateScrubber(){
   $('#scrubPast').style.setProperty('--p', ((clamped - SMIN) / (SMAX - SMIN)).toFixed(4));
   range.classList.toggle('preview', !live);
   $('#scrubState').classList.toggle('preview', !live);
-  $('#scrubStateText').textContent = live ? 'Live' : 'Preview';
+  $('#scrubState').classList.toggle('archive', ARCHIVE && live);
+  $('#scrubStateText').textContent = ARCHIVE ? (live ? 'Day 2' : 'Replay') : live ? 'Live' : 'Preview';
+  $('#scrubLive').textContent = ARCHIVE ? 'Done' : 'Go live';
+  if (ARCHIVE && live){
+    $('#scrubTime').innerHTML = 'Thu, Oct 15<small>drag to replay</small>';
+    range.setAttribute('aria-valuetext', 'Thursday, October 15, 2026. Drag to replay the day');
+    $('#scrubLive').hidden = true;
+    $('#scrubPillText').textContent = 'Replay the day';
+    return;
+  }
   const label = live ? istLabel(t) : fT(Math.round(nm));
   const word = live ? 'IST' : momentWord(t);
   $('#scrubTime').innerHTML = esc(label) + '<small' + (/^clash/.test(word) ? ' class="clash"' : '') + '>' + word + '</small>';
   range.setAttribute('aria-valuetext', (live ? 'Live, ' : 'Previewing ') + label);
   $('#scrubLive').hidden = live;
-  $('#scrubPillText').innerHTML = live ? 'Live · ' + esc(istLabel(t)) : '<b>Preview</b> · ' + esc(label);
+  $('#scrubPillText').innerHTML = live ? 'Live · ' + esc(istLabel(t)) : '<b>' + (ARCHIVE ? 'Replay' : 'Preview') + '</b> · ' + esc(label);
 }
 function minFromX(x){
   const r = lanes.getBoundingClientRect(), f = Math.max(0, Math.min(1, (x - r.left) / r.width));

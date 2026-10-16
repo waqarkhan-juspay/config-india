@@ -1,7 +1,9 @@
 # Config Pokedex
 
-An unofficial, phone-first agenda for **Config India 2026, Day 2** (Thu, Oct 15, BIEC Bengaluru).
+An unofficial, phone-first agenda for **Config India 2026, Day 2** (Thu, Oct 15, 2026, BIEC Bengaluru).
 Browse the day, add sessions to your plan, see what's live, and share your plan on WhatsApp to compare with friends.
+
+The event is over, so the site now runs as an archive: the full agenda stays laid out, nothing is marked finished, and **Replay the day** (or the time scrubber) shows any moment of Oct 15 as it looked live.
 
 Plain HTML, CSS and JavaScript. No framework, no build step, no backend.
 
@@ -40,7 +42,8 @@ or drag the time scrubber at the bottom.
 
 ## Notes
 
-- **Saved plans** live in each visitor's browser (`localStorage`) until the end of Fri, Oct 16. Plans are never sent to a server; shared plans travel inside the link's `#` part.
+- **Saved plans** live in each visitor's browser (`localStorage`) and no longer expire. Plans are never sent to a server; shared plans travel inside the link's `#` part.
+- **Archive mode** turns on by itself once Oct 15, 8:00 PM IST has passed (`ARCHIVE` in `app.js`).
 - **Visitor stats** use [Vercel Web Analytics](https://vercel.com/docs/analytics): anonymous, no cookies. Turn it on in the Vercel dashboard under your project's **Analytics** tab, then redeploy. Unique visitors and page views show up there.
 - **Data** comes from the public schedule on config.figma.com as of Oct 14, 2026. Summaries and bios are short paraphrases, and every session links to its official page.
 - **Fonts:** Inter, Newsreader (page titles) and DM Mono, all free from Google Fonts under the SIL Open Font License.
